@@ -1,0 +1,1 @@
+# Core package - Contains foundational trading system components 

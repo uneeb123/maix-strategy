@@ -1,6 +1,6 @@
 # Maix Strategy
 
-A Python implementation of a Solana-based trading bot that executes automated trading strategies using Jupiter and Helius APIs.
+A Python implementation of a Solana-based trading bot that executes automated trading strategies using Jupiter and Helius APIs. Features a modular strategy architecture that allows easy implementation of new trading strategies.
 
 ## Features
 
@@ -8,9 +8,13 @@ A Python implementation of a Solana-based trading bot that executes automated tr
 - Integration with Jupiter DEX for token swaps
 - Real-time market data from Helius
 - PostgreSQL database integration with Prisma ORM
-- Configurable trading strategies
+- **Modular strategy architecture** - Easy to add new trading strategies
+- **Strategy pattern implementation** - Clean separation of trading logic from execution
+- **Multiple built-in strategies** - Goliath and Momentum strategies included
+- **Interactive CLI** - User-friendly interface with cursor navigation
 - Risk management with stop-loss and take-profit
 - Retry mechanisms with increasing slippage
+- **Strategy factory pattern** - Dynamic strategy loading and management
 
 ## Prerequisites
 
@@ -61,26 +65,7 @@ pip3 install -r requirements.txt
 cp env.example .env
 
 # Edit the .env file with your actual values
-nano .env  # or use your preferred editor
 ```
-
-The `.env` file should contain:
-
-```env
-# Database configuration
-DATABASE_URL="postgresql://username:password@localhost:5432/database_name"
-DIRECT_URL="postgresql://username:password@localhost:5432/database_name"
-
-# API Keys
-HELIUS_API_KEY="your_helius_api_key_here"
-JUPITER_API_KEY="your_jupiter_api_key_here"  # Optional for lite API
-```
-
-**Important**: Replace the placeholder values with your actual:
-
-- PostgreSQL database credentials
-- Helius API key (get from https://dev.helius.xyz/)
-- Jupiter API key (get from https://station.jup.ag/)
 
 4. Set up the database:
 
@@ -95,76 +80,254 @@ prisma generate
 deactivate
 ```
 
-## Configuration
-
-The trading bot configuration is managed in `config.py`. Modify this file to customize the trading behavior:
-
-### Trading Parameters
-
-- `TELEGRAM_CHAT_ID`: Telegram chat ID for wallet association
-- `TOKEN_ID`: Target token ID for trading
-- `SLIPPAGE_BPS`: Slippage tolerance in basis points
-- `LOOP_DELAY_MS`: Loop delay in milliseconds
-- `LOOKBACK`: Number of candles to look back for strategy
-- `BALANCE_PERCENTAGE`: Percentage of wallet balance to use per trade
-- `FEE_BUFFER_SOL`: SOL reserved for transaction fees
-- `RENT_BUFFER_SOL`: SOL reserved for rent costs
-
-### Risk Management
-
-- `STOP_LOSS_PERCENTAGE`: Stop loss percentage (-10.0 for 10% loss)
-- `TAKE_PROFIT_PERCENTAGE`: Take profit percentage (20.0 for 20% gain)
-- `MAX_HOLD_TIME_HOURS`: Maximum time to hold a position
-
-### Validate Configuration
-
-Test your configuration:
-
-```bash
-python config.py
-```
-
 ## Usage
 
 **Important**: Make sure your virtual environment is activated before running the bot.
+
+### Running the Trading Bot
+
+The bot features an interactive CLI that guides you through the setup process:
 
 ```bash
 # Activate virtual environment (if not already active)
 source venv/bin/activate  # macOS/Linux
 
-# Run the trading bot
+# Run the interactive trading bot
+python3 trade_executor.py
+```
+
+### Interactive CLI Features
+
+The CLI will:
+
+1. **Ask for Token ID**: Enter the token ID you want to trade
+2. **Strategy Selection**: Choose from available strategies with cursor navigation
+   - Use ↑/↓ arrow keys to navigate
+   - Press ENTER to select
+   - Press Ctrl+C to exit
+3. **Configuration Review**: Shows your selected configuration
+4. **Confirmation**: Confirm before starting the trading bot
+
+### Fallback Mode
+
+If cursor navigation is not available in your terminal, the CLI will automatically fall back to a simple numbered selection interface.
+
+### What the Bot Does
+
+1. Connects to the database and loads wallet information
+2. Fetches token metadata and OHLCV data
+3. Executes the selected trading strategy in a continuous loop
+4. Places buy/sell orders based on strategy signals
+5. Manages positions with strategy-specific stop-loss and take-profit levels
+
+## Trading Strategies
+
+The bot uses a modular strategy architecture that allows easy implementation of new trading strategies. Each strategy is self-contained and defines its own buy/sell logic and risk management rules.
+
+### Built-in Strategies
+
+#### Goliath Strategy
+
+- **Buy Signal**: Price above 20-period moving average with high volume (>1.5x average)
+- **Sell Signals**:
+  - Stop loss: 10% loss
+  - Take profit: 20% gain
+  - Time exit: 1 hour maximum hold time
+- **Cooldown**: 5 minutes after exit before next trade
+
+#### Momentum Strategy
+
+- **Buy Signal**: Positive price momentum (>2%), high volume momentum (>50%), RSI < 70
+- **Sell Signals**:
+  - Stop loss: 8% loss (tighter than Goliath)
+  - Take profit: 15% gain (more conservative)
+  - Time exit: 30 minutes maximum hold time
+- **Cooldown**: 3 minutes after exit before next trade
+
+### Strategy Architecture
+
+Each strategy implements the `TradingStrategy` abstract base class with two main methods:
+
+- `should_buy()`: Determines if a buy signal should be triggered
+- `should_sell()`: Determines if an existing position should be sold
+
+The strategy pattern provides:
+
+- **Clean separation** of trading logic from execution
+- **Easy testing** of individual strategies
+- **Simple extension** for new strategies
+- **Configuration isolation** per strategy
+
+## Creating New Strategies
+
+The modular architecture makes it easy to create new trading strategies. Here's how to implement a custom strategy:
+
+### Step 1: Create Strategy Class
+
+Create a new file in the `strategies/` directory (e.g., `strategies/my_strategy.py`):
+
+```python
+from typing import Dict, Any
+from datetime import datetime, timedelta
+from core.strategy_interface import TradingStrategy, StrategyConfig, Candle, Position
+
+
+class MyStrategy(TradingStrategy):
+    """My custom trading strategy"""
+
+    def __init__(self):
+        config = StrategyConfig(
+            name="MyStrategy",
+            token_id=15153,  # Target token ID
+            lookback_periods=25,
+            balance_percentage=0.4,  # 40% of wallet balance
+            default_slippage_bps=400,  # 4% slippage
+            min_trade_size_sol=0.001,
+            fee_buffer_sol=0.01,
+            rent_buffer_sol=0.002,
+            loop_delay_ms=1000
+        )
+        super().__init__(config)
+
+    def should_buy(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Implement your buy signal logic here"""
+        lookback = data.get('lookback', [])
+        curr = data.get('curr')
+        last_exit_time = data.get('last_exit_time')
+
+        if not lookback or not curr:
+            return {'action': 'hold', 'info': 'Insufficient data'}
+
+        # Your custom buy logic here
+        # Example: Buy when price crosses above 50-period moving average
+        if len(lookback) >= 50:
+            ma_50 = sum(candle.close for candle in lookback[-50:]) / 50
+
+            if curr.close > ma_50:
+                # Check cooldown period
+                if last_exit_time is None or (datetime.now() - last_exit_time) > timedelta(minutes=10):
+                    return {
+                        'action': 'buy',
+                        'info': f'Price {curr.close:.6f} above MA50 {ma_50:.6f}'
+                    }
+
+        return {'action': 'hold', 'info': 'No buy signal'}
+
+    def should_sell(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Implement your sell signal logic here"""
+        position = data.get('position')
+        curr = data.get('curr')
+        entry_price = data.get('entry_price')
+        entry_time = data.get('entry_time')
+
+        if not position or not curr or entry_price is None or entry_time is None:
+            return {'shouldSell': False, 'reason': 'Missing data', 'info': ''}
+
+        # Calculate profit/loss percentage
+        pnl_pct = ((curr.close - entry_price) / entry_price) * 100
+
+        # Your custom sell logic here
+        # Example: Stop loss at 5%, take profit at 25%
+        if pnl_pct < -5:
+            return {
+                'shouldSell': True,
+                'reason': 'stop_loss',
+                'info': f'Stop loss triggered: {pnl_pct:.2f}% loss'
+            }
+
+        if pnl_pct > 25:
+            return {
+                'shouldSell': True,
+                'reason': 'take_profit',
+                'info': f'Take profit triggered: {pnl_pct:.2f}% gain'
+            }
+
+        # Time-based exit: 2 hours maximum
+        time_held = datetime.now() - entry_time
+        if time_held > timedelta(hours=2):
+            return {
+                'shouldSell': True,
+                'reason': 'time_exit',
+                'info': f'Time-based exit: held for {time_held.total_seconds() / 60:.1f} minutes'
+            }
+
+        return {'shouldSell': False, 'reason': 'hold', 'info': f'Current PnL: {pnl_pct:.2f}%'}
+```
+
+### Step 2: Register the Strategy
+
+Add your strategy to the factory in `core/strategy_factory.py`:
+
+```python
+from strategies.my_strategy import MyStrategy
+
+class StrategyFactory:
+    _strategies: Dict[str, Type[TradingStrategy]] = {
+        'goliath': GoliathStrategy,
+        'momentum': MomentumStrategy,
+        'my_strategy': MyStrategy,  # Add your strategy here
+    }
+```
+
+### Step 3: Use Your Strategy
+
+Run the bot and select your new strategy from the interactive menu:
+
+```bash
 python trade_executor.py
 ```
 
-The bot will:
+Then navigate to your strategy using the arrow keys and press ENTER to select it.
 
-1. Connect to the database and load wallet information
-2. Fetch token metadata and OHLCV data
-3. Execute the trading strategy in a continuous loop
-4. Place buy/sell orders based on strategy signals
-5. Manage positions with stop-loss and take-profit
+### Strategy Development Tips
 
-## Trading Strategy
+1. **Start Simple**: Begin with basic indicators like moving averages
+2. **Test Thoroughly**: Use historical data to backtest your strategy
+3. **Risk Management**: Always implement stop-loss and take-profit
+4. **Cooldown Periods**: Add delays between trades to avoid overtrading
+5. **Logging**: Use descriptive info messages for debugging
+6. **Configuration**: Make parameters configurable through StrategyConfig
 
-The current implementation includes a simplified Goliath strategy that:
+### Available Data
 
-- Buys when price is above moving average and volume is high
-- Sells on stop-loss (10% loss), take-profit (20% gain), or time-based exit (1 hour)
-- Includes cooldown periods between trades
+Your strategy methods receive the following data:
 
-You can customize the strategy by modifying the `trade_strategy.py` file.
+**Buy Signal Data:**
+
+- `lookback`: List of historical candles (Candle objects)
+- `curr`: Current candle (Candle object)
+- `last_exit_time`: Last exit time for cooldown logic
+
+**Sell Signal Data:**
+
+- `position`: Position object with entry details
+- `curr`: Current candle (Candle object)
+- `entry_price`: Original entry price
+- `entry_time`: Original entry time
+
+**Candle Object Properties:**
+
+- `timestamp`: Candle timestamp
+- `open`, `high`, `low`, `close`: OHLC prices
+- `volume`: Trading volume
 
 ## Project Structure
 
 ```
 maix-strategy/
-├── trade_executor.py          # Main trading script
-├── trading_strategy.py        # Trading strategy logic
-├── config.py                  # Configuration management
+├── trade_executor.py          # Main trading script with interactive CLI
 ├── requirements.txt           # Python dependencies
 ├── env.example               # Environment variables template
 ├── prisma/
 │   └── schema.prisma         # Database schema
+├── core/                     # Core trading system components
+│   ├── __init__.py
+│   ├── strategy_interface.py # Abstract base classes and interfaces
+│   └── strategy_factory.py   # Strategy factory pattern
+├── strategies/               # Concrete strategy implementations
+│   ├── __init__.py
+│   ├── goliath_strategy.py   # Goliath trading strategy
+│   └── momentum_strategy.py  # Momentum trading strategy
 ├── utils/
 │   ├── __init__.py
 │   ├── debugger.py           # Logging utility

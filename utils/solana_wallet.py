@@ -1,10 +1,10 @@
 import base58
 from typing import Optional, Dict, Any, List
-from solana.keypair import Keypair
-from solana.publickey import PublicKey
-from solana.transaction import Transaction
-from solana.system_program import TransferParams, transfer
-from solana.rpc.commitment import Commitment
+from solders.keypair import Keypair
+from solders.pubkey import Pubkey as PublicKey
+from solders.transaction import Transaction
+from solders.system_program import TransferParams, transfer
+from solders.commitment_config import CommitmentConfig
 
 from .debugger import Debugger
 from lib.helius_client import HeliusClient
@@ -95,7 +95,7 @@ async def send_sol(
         signature = await connection.send_transaction(
             transaction,
             sender_keypair,
-            commitment=Commitment("confirmed")
+            commitment=CommitmentConfig("confirmed")
         )
         
         return signature.value
