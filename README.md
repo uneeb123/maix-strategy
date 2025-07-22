@@ -8,13 +8,7 @@ A Python implementation of a Solana-based trading bot that executes automated tr
 - Integration with Jupiter DEX for token swaps
 - Real-time market data from Helius
 - PostgreSQL database integration with Prisma ORM
-- **Modular strategy architecture** - Easy to add new trading strategies
-- **Strategy pattern implementation** - Clean separation of trading logic from execution
-- **Multiple built-in strategies** - Goliath and Momentum strategies included
-- **Interactive CLI** - User-friendly interface with cursor navigation
-- Risk management with stop-loss and take-profit
-- Retry mechanisms with increasing slippage
-- **Strategy factory pattern** - Dynamic strategy loading and management
+- Easy to add new trading strategies
 
 ## Prerequisites
 
@@ -30,7 +24,7 @@ A Python implementation of a Solana-based trading bot that executes automated tr
 1. Clone the repository:
 
 ```bash
-git clone <repository-url>
+git clone git@github.com:uneeb123/maix-strategy.git
 cd maix-strategy
 ```
 
@@ -160,124 +154,41 @@ The strategy pattern provides:
 
 ## Creating New Strategies
 
-The modular architecture makes it easy to create new trading strategies. Here's how to implement a custom strategy:
+The modular architecture makes it easy to add new trading strategies.
 
-### Step 1: Create Strategy Class
+**To add a new strategy:**
 
-Create a new file in the `strategies/` directory (e.g., `strategies/my_strategy.py`):
+1. **Create the Strategy File and Class**
 
-```python
-from typing import Dict, Any
-from datetime import datetime, timedelta
-from core.strategy_interface import TradingStrategy, StrategyConfig, Candle, Position
+   - Add a new file in the `strategies/` directory named `{name}.py` (e.g., `momentum.py` for a strategy called “Momentum”).
+   - Inside, define a class named `{Name}Strategy` (e.g., `MomentumStrategy`) that implements the `TradingStrategy` interface.
 
+2. **Update the Config**
 
-class MyStrategy(TradingStrategy):
-    """My custom trading strategy"""
+   - Add an entry to `strategies/config.json`:
+     ```json
+     {
+       "name": "Momentum",
+       "description": "Captures price momentum."
+     }
+     ```
+   - The `name` field (case-insensitive) must match the filename and class name pattern.
 
-    def __init__(self):
-        config = StrategyConfig(
-            name="MyStrategy",
-            token_id=15153,  # Target token ID
-            lookback_periods=25,
-            balance_percentage=0.4,  # 40% of wallet balance
-            default_slippage_bps=400,  # 4% slippage
-            min_trade_size_sol=0.001,
-            fee_buffer_sol=0.01,
-            rent_buffer_sol=0.002,
-            loop_delay_ms=1000
-        )
-        super().__init__(config)
+3. **That’s it!**
+   - The system will automatically detect and load your new strategy.
+   - If the file or class is missing or misnamed, the bot will show a clear error and exit.
 
-    def should_buy(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Implement your buy signal logic here"""
-        lookback = data.get('lookback', [])
-        curr = data.get('curr')
-        last_exit_time = data.get('last_exit_time')
+**Example:**
 
-        if not lookback or not curr:
-            return {'action': 'hold', 'info': 'Insufficient data'}
-
-        # Your custom buy logic here
-        # Example: Buy when price crosses above 50-period moving average
-        if len(lookback) >= 50:
-            ma_50 = sum(candle.close for candle in lookback[-50:]) / 50
-
-            if curr.close > ma_50:
-                # Check cooldown period
-                if last_exit_time is None or (datetime.now() - last_exit_time) > timedelta(minutes=10):
-                    return {
-                        'action': 'buy',
-                        'info': f'Price {curr.close:.6f} above MA50 {ma_50:.6f}'
-                    }
-
-        return {'action': 'hold', 'info': 'No buy signal'}
-
-    def should_sell(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Implement your sell signal logic here"""
-        position = data.get('position')
-        curr = data.get('curr')
-        entry_price = data.get('entry_price')
-        entry_time = data.get('entry_time')
-
-        if not position or not curr or entry_price is None or entry_time is None:
-            return {'shouldSell': False, 'reason': 'Missing data', 'info': ''}
-
-        # Calculate profit/loss percentage
-        pnl_pct = ((curr.close - entry_price) / entry_price) * 100
-
-        # Your custom sell logic here
-        # Example: Stop loss at 5%, take profit at 25%
-        if pnl_pct < -5:
-            return {
-                'shouldSell': True,
-                'reason': 'stop_loss',
-                'info': f'Stop loss triggered: {pnl_pct:.2f}% loss'
-            }
-
-        if pnl_pct > 25:
-            return {
-                'shouldSell': True,
-                'reason': 'take_profit',
-                'info': f'Take profit triggered: {pnl_pct:.2f}% gain'
-            }
-
-        # Time-based exit: 2 hours maximum
-        time_held = datetime.now() - entry_time
-        if time_held > timedelta(hours=2):
-            return {
-                'shouldSell': True,
-                'reason': 'time_exit',
-                'info': f'Time-based exit: held for {time_held.total_seconds() / 60:.1f} minutes'
-            }
-
-        return {'shouldSell': False, 'reason': 'hold', 'info': f'Current PnL: {pnl_pct:.2f}%'}
-```
-
-### Step 2: Register the Strategy
-
-Add your strategy to the factory in `core/strategy_factory.py`:
-
-```python
-from strategies.my_strategy import MyStrategy
-
-class StrategyFactory:
-    _strategies: Dict[str, Type[TradingStrategy]] = {
-        'goliath': GoliathStrategy,
-        'momentum': MomentumStrategy,
-        'my_strategy': MyStrategy,  # Add your strategy here
-    }
-```
-
-### Step 3: Use Your Strategy
-
-Run the bot and select your new strategy from the interactive menu:
-
-```bash
-python trade_executor.py
-```
-
-Then navigate to your strategy using the arrow keys and press ENTER to select it.
+- File: `strategies/mycustom.py`
+- Class: `MycustomStrategy`
+- Config:
+  ```json
+  {
+    "name": "Mycustom",
+    "description": "My custom trading strategy."
+  }
+  ```
 
 ### Strategy Development Tips
 
