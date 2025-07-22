@@ -1,0 +1,36 @@
+Creative Commons Attribution-NonCommercial 4.0 International License
+
+Copyright (c) 2025 Prysma Labs
+
+This work is licensed under the Creative Commons Attribution-NonCommercial 4.0
+International License. To view a copy of this license, visit:
+http://creativecommons.org/licenses/by-nc/4.0/
+
+You are free to:
+
+- Share — copy and redistribute the material in any medium or format
+- Adapt — remix, transform, and build upon the material
+
+Under the following terms:
+
+- Attribution — You must give appropriate credit, provide a link to the license,
+  and indicate if changes were made. You may do so in any reasonable manner,
+  but not in any way that suggests the licensor endorses you or your use.
+- NonCommercial — You may not use the material for commercial purposes.
+
+No additional restrictions — You may not apply legal terms or technological
+measures that legally restrict others from doing anything the license permits.
+
+---
+
+Alpha Hunter Strategy - Python Trading Bot
+A Solana-based automated trading bot implementation
+
+Original TypeScript implementation and concept by Prysma Labs
+Python adaptation and enhancements by the development team
+
+This software is for educational and research purposes. Trading cryptocurrencies
+involves significant risk. Use at your own risk and never invest more than you
+can afford to lose.
+
+For more information about Prysma Labs, visit: https://prysmalabs.com

@@ -232,10 +232,10 @@ The bot provides detailed logging through the Debugger utility:
 
 If you encounter the "externally-managed-environment" error on macOS with Python 3.11+, try these solutions:
 
-1. **Use python3 -m pip instead of pip directly:**
+1. **Use pip3 instead of pip:**
 
    ```bash
-   python3 -m pip install -r requirements.txt
+   pip3 install -r requirements.txt
    ```
 
 2. **Recreate the virtual environment:**
@@ -252,7 +252,7 @@ If you encounter the "externally-managed-environment" error on macOS with Python
 
    # Activate and install
    source venv/bin/activate
-   python3 -m pip install -r requirements.txt
+   pip3 install -r requirements.txt
    ```
 
 3. **Verify virtual environment is properly activated:**
@@ -280,8 +280,12 @@ If you encounter the "externally-managed-environment" error on macOS with Python
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License - see the LICENSE file for details.
+
+**Important**: This software is for educational and research purposes only. Commercial use is not permitted under this license.
 
 ## Disclaimer
 
-This software is for educational and research purposes. Trading cryptocurrencies involves significant risk. Use at your own risk and never invest more than you can afford to lose.
+This software is for educational and research purposes only. Trading cryptocurrencies involves significant risk. Use at your own risk and never invest more than you can afford to lose.
+
+**License Notice**: This project is licensed under Creative Commons Attribution-NonCommercial 4.0 International License. Commercial use is not permitted. For commercial licensing inquiries, please contact Prysma Labs.
