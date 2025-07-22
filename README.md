@@ -12,7 +12,7 @@ A Python implementation of a Solana-based trading bot that executes automated tr
 
 ## Prerequisites
 
-- Python 3.8+
+- Python 3.8+ (<3.12)
 - PostgreSQL database
 - Solana wallet with SOL balance
 - Helius API key
@@ -33,6 +33,9 @@ cd maix-strategy
 ```bash
 # Create virtual environment
 python3 -m venv venv
+
+# To use a specific python version
+python@3.10 -m venv myenv
 
 # Activate virtual environment
 source venv/bin/activate
