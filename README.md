@@ -94,7 +94,7 @@ The bot features an interactive CLI that guides you through the setup process:
 source venv/bin/activate  # macOS/Linux
 
 # Run the interactive trading bot
-python3 trade_executor.py
+python trade_executor.py
 ```
 
 ### Interactive CLI Features
