@@ -1,0 +1,112 @@
+generator client {
+    provider  = "prisma-client-py"
+    interface = "sync"
+}
+
+datasource db {
+    provider  = "postgresql"
+    url       = env("DATABASE_URL")
+    directUrl = env("DIRECT_URL")
+}
+
+model SolanaWallet {
+    id             Int          @id @default(autoincrement())
+    publicKey      String       @unique
+    secretKey      String // Store as base64 or base58 string
+    telegramChat   TelegramChat @relation(fields: [telegramChatId], references: [id])
+    telegramChatId Int          @unique
+    createdAt      DateTime     @default(now())
+    updatedAt      DateTime     @updatedAt
+    Position       Position[]
+}
+
+model TelegramChat {
+    id           Int           @id @default(autoincrement())
+    chatId       String        @unique
+    subscribed   Boolean       @default(true)
+    solanaWallet SolanaWallet?
+    createdAt    DateTime      @default(now())
+    updatedAt    DateTime      @updatedAt
+    username     String?
+    first_name   String?
+    last_name    String?
+    deactivated  Boolean       @default(false)
+
+    @@index([chatId])
+}
+
+model MigratedToken {
+    id             Int          @id @default(autoincrement())
+    name           String
+    symbol         String
+    createdAt      DateTime
+    migratedAt     DateTime?
+    address        String
+    networkId      Int
+    twitter        String?
+    website        String?
+    imageBannerUrl String?
+    imageSmallUrl  String?
+    description    String?
+    marketCap      Float
+    priceUSD       Float
+    launchpad      Launchpad?   @relation(fields: [launchpadId], references: [id])
+    launchpadId    Int?
+    dead           Boolean      @default(false)
+    TokenOHLCV     TokenOHLCV[]
+
+    @@unique([address, networkId])
+}
+
+model Launchpad {
+    id                Int             @id @default(autoincrement())
+    launchpadName     String
+    launchpadProtocol String
+    migratedTokens    MigratedToken[]
+
+    @@unique([launchpadName, launchpadProtocol])
+}
+
+model TokenOHLCV {
+    id        Int           @id @default(autoincrement())
+    tokenId   Int
+    token     MigratedToken @relation(fields: [tokenId], references: [id])
+    timestamp DateTime
+    interval  String
+    open      Float
+    high      Float
+    low       Float
+    close     Float
+    volume    Float
+    volumeUSD Float
+    currency  String
+    createdAt DateTime      @default(now())
+
+    @@unique([tokenId, timestamp, interval])
+    @@index([tokenId])
+    @@index([interval])
+}
+
+model Position {
+    id           Int          @id @default(autoincrement())
+    tokenAddress String
+    tokenSymbol  String
+    walletId     Int
+    wallet       SolanaWallet @relation(fields: [walletId], references: [id])
+    side         String // "BUY" or "SELL"
+    size         Float // Amount of tokens
+    entryPrice   Float
+    entryTime    DateTime     @default(now())
+    exitPrice    Float?
+    exitTime     DateTime?
+    status       String // "OPEN" or "CLOSED"
+    pnl          Float?
+    txOpen       String? // Transaction signature for open
+    txClose      String? // Transaction signature for close
+    createdAt    DateTime     @default(now())
+    updatedAt    DateTime     @updatedAt
+
+    @@index([tokenAddress])
+    @@index([walletId])
+    @@index([status])
+}
