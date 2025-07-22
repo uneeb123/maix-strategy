@@ -62,11 +62,11 @@ This is where API keys will be stored. Ask owner to share these with you.
 ```bash
 # Copy the example environment file
 cp env.example .env
-
-# Edit the .env file with your actual values
 ```
 
-4. Set up the database:
+4. Edit the .env file with your actual values
+
+5. Set up the database:
 
 This will allow you to read data from database.
 
@@ -75,7 +75,7 @@ This will allow you to read data from database.
 prisma generate
 ```
 
-5. Deactivate virtual environment when done:
+6. Deactivate virtual environment when done:
 
 ```bash
 deactivate
