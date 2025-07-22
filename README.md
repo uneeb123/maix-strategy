@@ -57,6 +57,8 @@ pip3 install -r requirements.txt
 
 3. Set up environment variables:
 
+This is where API keys will be stored. Ask owner to share these with you.
+
 ```bash
 # Copy the example environment file
 cp env.example .env
@@ -65,6 +67,8 @@ cp env.example .env
 ```
 
 4. Set up the database:
+
+This will allow you to read data from database.
 
 ```bash
 # Generate Prisma client
