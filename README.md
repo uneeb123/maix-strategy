@@ -1,4 +1,4 @@
-# Alpha Hunter Strategy - Python Trading Bot
+# Maix Strategy
 
 A Python implementation of a Solana-based trading bot that executes automated trading strategies using Jupiter and Helius APIs.
 
@@ -27,7 +27,7 @@ A Python implementation of a Solana-based trading bot that executes automated tr
 
 ```bash
 git clone <repository-url>
-cd alpha-hunter-strategy
+cd maix-strategy
 ```
 
 2. Set up a virtual environment (recommended):
@@ -157,7 +157,7 @@ You can customize the strategy by modifying the `trade_strategy.py` file.
 ## Project Structure
 
 ```
-alpha-hunter-strategy/
+maix-strategy/
 ├── trade_executor.py          # Main trading script
 ├── trading_strategy.py        # Trading strategy logic
 ├── config.py                  # Configuration management
