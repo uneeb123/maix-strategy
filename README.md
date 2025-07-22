@@ -35,7 +35,7 @@ cd maix-strategy
 python3 -m venv venv
 
 # To use a specific python version
-python@3.10 -m venv myenv
+python3.10 -m venv myenv
 
 # Activate virtual environment
 source venv/bin/activate
