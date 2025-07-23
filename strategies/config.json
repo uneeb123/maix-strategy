@@ -2,5 +2,9 @@
   {
     "name": "Goliath",
     "description": "A large-volume trading strategy."
+  },
+  {
+    "name": "LocalExtrema",
+    "description": "A strategy that buys on local minima and sells on local maxima."
   }
 ]

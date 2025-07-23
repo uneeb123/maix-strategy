@@ -1,0 +1,11 @@
+---
+alwaysApply: true
+---
+
+- This repo executes trading strategies
+- We have the following folders: core, lib, prisma, strategies and tests
+- When adding a new trading strategy, add them to the strategies folder and make sure to add them to the strategies/config.json file.
+- The trading strategy should not be in any folder except strategies.
+- All tests should be written in /tests folder
+- Any functionality that is relevant for execution but not a strategy itself should go in /core
+- All helper methods should go in /utils
