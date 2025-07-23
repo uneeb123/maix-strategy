@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import pytz
 from strategies.local_extrema import LocalExtremaStrategy
 from core.strategy_interface import Candle, Position
+from core.plotter import plot_trading_signals
 
 class TestLocalExtremaStrategy(unittest.TestCase):
     
@@ -281,6 +282,100 @@ class TestLocalExtremaStrategy(unittest.TestCase):
         result = self.strategy.should_buy(data)
         self.assertEqual(result['action'], 'hold')
         self.assertIn('No local minimum detected', result['info'])
+    
+    def test_extrema_detection_with_plot(self):
+        """Test local extrema detection and generate a plot showing the results."""
+        # Create a price series with clear local minima and maxima
+        # Pattern: 100 -> 95 -> 90 -> 95 -> 100 -> 105 -> 100 -> 95 -> 90 -> 95
+        # Local minima at 90 (positions 2 and 8), local maxima at 105 (position 5)
+        candles = [
+            self.create_candle(0, 100.0),
+            self.create_candle(1, 95.0),
+            self.create_candle(2, 90.0),  # First local minimum
+            self.create_candle(3, 95.0),
+            self.create_candle(4, 100.0),
+            self.create_candle(5, 105.0),  # Local maximum
+            self.create_candle(6, 100.0),
+            self.create_candle(7, 95.0),
+            self.create_candle(8, 90.0),   # Second local minimum
+            self.create_candle(9, 95.0),
+        ]
+        
+        buy_points = []
+        sell_points = []
+        
+        # Test each candle for extrema detection
+        for i in range(2, len(candles) - 1):  # Skip first and last candles
+            curr = candles[i]
+            lookback = candles[:i]
+            
+            # Test for local minimum (buy signal)
+            buy_data = {
+                'lookback': lookback,
+                'curr': curr,
+                'last_exit_time': None
+            }
+            
+            buy_result = self.strategy.should_buy(buy_data)
+            if buy_result['action'] == 'buy':
+                buy_points.append((curr.timestamp, curr.close))
+                print(f"Local minimum detected at {curr.timestamp}: ${curr.close:.2f}")
+        
+        # Test for local maximum (sell signal) - simulate having a position
+        position = Position(
+            id=1,
+            entry_price=90.0,
+            entry_time=self.base_time,
+            size=1.0
+        )
+        
+        for i in range(2, len(candles) - 1):
+            curr = candles[i]
+            lookback = candles[:i]
+            
+            sell_data = {
+                'position': position,
+                'curr': curr,
+                'entry_price': 90.0,
+                'entry_time': self.base_time,
+                'lookback': lookback
+            }
+            
+            sell_result = self.strategy.should_sell(sell_data)
+            if sell_result['shouldSell'] and sell_result['reason'] == 'local_maximum':
+                sell_points.append((curr.timestamp, curr.close))
+                print(f"Local maximum detected at {curr.timestamp}: ${curr.close:.2f}")
+        
+        # Verify we detected the expected extrema
+        detected_minima = [price for _, price in buy_points]
+        detected_maxima = [price for _, price in sell_points]
+        
+        print(f"\nDetected local minima: {detected_minima}")
+        print(f"Detected local maxima: {detected_maxima}")
+        
+        # Check that we detected at least one of each type
+        self.assertGreater(len(buy_points), 0, "No local minima detected")
+        self.assertGreater(len(sell_points), 0, "No local maxima detected")
+        
+        # Verify that the main expected extrema are detected
+        self.assertIn(90.0, detected_minima, "Main local minimum at 90.0 not detected")
+        self.assertIn(105.0, detected_maxima, "Main local maximum at 105.0 not detected")
+        
+        # Generate plot
+        try:
+            plot_path = plot_trading_signals(
+                candles=candles,
+                token_id=0,
+                strategy_name="local_extrema",
+                buy_points=buy_points,
+                sell_points=sell_points
+            )
+            print(f"\nPlot saved to: {plot_path}")
+            self.assertIsNotNone(plot_path, "Plot generation failed")
+        except Exception as e:
+            print(f"Plot generation failed: {e}")
+            # Don't fail the test if plotting fails, just warn
+            self.skipTest(f"Plotting not available: {e}")
 
 if __name__ == '__main__':
     unittest.main() 

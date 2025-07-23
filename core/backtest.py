@@ -10,6 +10,7 @@ from rich.table import Table
 from prisma import Prisma
 from core.strategy_interface import Candle, Position, StrategyConfig
 from core.strategy_factory import StrategyFactory
+from core.plotter import plot_trading_signals
 from utils.debugger import Debugger
 
 console = Console()
@@ -237,102 +238,27 @@ class Backtester:
                 pass
 
     def plot_results(self, result: BacktestResult, candles: List[Candle]) -> None:
-        import os
-        import mplfinance as mpf
-        import matplotlib.pyplot as plt
-        import platform
-        import subprocess
-        import warnings
-        from datetime import datetime
         if not candles or not result.timestamps:
             console.print("[red]No data to plot[/red]")
             return
+        
+        # Extract buy and sell points from positions
+        buy_points = [(p.entry_time, p.entry_price) for p in result.positions]
+        sell_points = [(p.exit_time, p.exit_price) for p in result.positions if p.exit_time and p.exit_price]
+        
+        # Use the core plotter
         try:
-            df = pd.DataFrame([
-                {
-                    'timestamp': c.timestamp,
-                    'Open': c.open,
-                    'High': c.high,
-                    'Low': c.low,
-                    'Close': c.close,
-                    'Volume': c.volume
-                }
-                for c in candles
-            ])
-        except Exception as e:
-            console.print(f"[red]Error creating DataFrame from candles: {e}[/red]")
-            raise
-        df.set_index('timestamp', inplace=True)
-        buy_locs = [(p.entry_time, p.entry_price) for p in result.positions]
-        sell_locs = [(p.exit_time, p.exit_price) for p in result.positions if p.exit_time and p.exit_price]
-        min_len = min(len(result.timestamps), len(result.equity_curve), len(df))
-        df = df.iloc[:min_len]
-        trimmed_timestamps = result.timestamps[:min_len]
-        trimmed_equity_curve = result.equity_curve[:min_len]
-        equity_df = pd.DataFrame({
-            'timestamp': trimmed_timestamps,
-            'Equity': trimmed_equity_curve
-        })
-        equity_df.set_index('timestamp', inplace=True)
-        common_index = df.index.intersection(equity_df.index)
-        df = df.loc[common_index]
-        equity_df = equity_df.loc[common_index]
-        buy_marker = np.full(len(df), np.nan)
-        sell_marker = np.full(len(df), np.nan)
-        buy_time_to_idx = {pd.Timestamp(t): i for i, t in enumerate(df.index)}
-        for t, price in buy_locs:
-            idx = buy_time_to_idx.get(pd.Timestamp(t))
-            if idx is not None:
-                buy_marker[idx] = price
-        for t, price in sell_locs:
-            idx = buy_time_to_idx.get(pd.Timestamp(t))
-            if idx is not None:
-                sell_marker[idx] = price
-        apds = []
-        if np.any(~np.isnan(buy_marker)):
-            apds.append(mpf.make_addplot(buy_marker, type='scatter', markersize=100, marker='^', color='g', panel=0))
-        if np.any(~np.isnan(sell_marker)):
-            apds.append(mpf.make_addplot(sell_marker, type='scatter', markersize=100, marker='v', color='r', panel=0))
-        artifacts_dir = 'artifacts'
-        os.makedirs(artifacts_dir, exist_ok=True)
-        now_str = datetime.now().strftime('%Y%m%d_%H%M%S')
-        image_path = os.path.join(artifacts_dir, f"{self.config.token_id}_{self.config.name}_{now_str}.png")
-        try:
-            fig, axes = mpf.plot(
-                df,
-                type='candle',
-                volume=True,
-                addplot=apds,
-                returnfig=True,
-                figscale=1.2,
-                figratio=(16,9),
-                title=f'{self.config.name} Strategy Backtest Results',
-                style='yahoo',
-                panel_ratios=(3,1),
-                warn_too_much_data=4000
+            plot_path = plot_trading_signals(
+                candles=candles,
+                token_id=self.config.token_id,
+                strategy_name=self.config.name.lower().replace(' ', '_'),
+                buy_points=buy_points,
+                sell_points=sell_points
             )
+            console.print(f"[green]Saved backtest plot to {plot_path}[/green]")
         except Exception as e:
-            console.print(f"[red]Error in mplfinance plot: {e}[/red]")
+            console.print(f"[red]Error creating backtest plot: {e}[/red]")
             raise
-        ax_equity = axes[2]
-        ax_equity.plot(equity_df.index, equity_df['Equity'], color='purple', label='Equity')
-        ax_equity.set_ylabel('Equity')
-        ax_equity.legend()
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            plt.tight_layout()
-        plt.savefig(image_path)
-        plt.close(fig)
-        console.print(f"[green]Saved backtest plot to {image_path}[/green]")
-        try:
-            if platform.system() == "Darwin":
-                subprocess.run(["open", image_path], check=False)
-            elif platform.system() == "Windows":
-                os.startfile(image_path)
-            else:
-                subprocess.run(["xdg-open", image_path], check=False)
-        except Exception as e:
-            console.print(f"[yellow]Could not open image automatically: {e}[/yellow]")
 
     def display_results(self, result: BacktestResult, show_trade_details: bool = False) -> None:
         results_table = Table(

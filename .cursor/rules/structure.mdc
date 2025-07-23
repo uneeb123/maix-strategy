@@ -8,4 +8,6 @@ alwaysApply: true
 - The trading strategy should not be in any folder except strategies.
 - All tests should be written in /tests folder
 - Any functionality that is relevant for execution but not a strategy itself should go in /core
-- All helper methods should go in /utils
+- The core should be agnostic of strategy
+- All helper methods that are not related executing trade or backtesting should go in /utils
+- The tests for core should be under /tests/core and for strategies it should be under /tests/strategies

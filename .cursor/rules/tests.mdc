@@ -1,0 +1,11 @@
+---
+description: When testing things
+globs:
+alwaysApply: false
+---
+
+- Run tests with pytest
+- Example command: `python3 -m pytest tests/core/test_plotter.py -v`
+- Core tests should be under /tests/core and Strategy tests under /tests/strategies
+- Don't put tests directly under the tests folder
+- Sample data for example is available under /tests/helper
