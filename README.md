@@ -81,6 +81,12 @@ prisma generate
 deactivate
 ```
 
+7. In order to fetch the latest updates.
+
+```bash
+git pull --rebase
+```
+
 ## Usage
 
 **Important**: Make sure your virtual environment is activated before running the bot.
@@ -228,6 +234,17 @@ Your strategy methods receive the following data:
 - `timestamp`: Candle timestamp
 - `open`, `high`, `low`, `close`: OHLC prices
 - `volume`: Trading volume
+
+## Running Tests
+
+From the project root directory, run:
+
+```bash
+python3 -m tests.test_backtest
+```
+
+This ensures all imports work correctly.
+Make sure your virtual environment is activated before running tests.
 
 ## Project Structure
 

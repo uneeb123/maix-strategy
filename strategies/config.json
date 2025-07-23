@@ -2,9 +2,5 @@
   {
     "name": "Goliath",
     "description": "A large-volume trading strategy."
-  },
-  {
-    "name": "Momentum",
-    "description": "Captures price momentum."
   }
 ]

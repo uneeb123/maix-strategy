@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from datetime import datetime, timedelta
+import pytz
 from core.strategy_interface import TradingStrategy, StrategyConfig, Candle, Position
 
 class MomentumStrategy(TradingStrategy):
@@ -41,7 +42,7 @@ class MomentumStrategy(TradingStrategy):
         vol_momentum = ((curr.volume - avg_vol) / avg_vol) * 100
         closes = [c.close for c in lookback[-15:]] + [curr.close]
         rsi = self._calc_rsi(closes)
-        cooldown_ok = last_exit_time is None or (datetime.now() - last_exit_time) > timedelta(minutes=3)
+        cooldown_ok = last_exit_time is None or (datetime.now(pytz.UTC) - last_exit_time) > timedelta(minutes=3)
         if price_momentum > 2 and vol_momentum > 50 and rsi < 70 and cooldown_ok:
             return {'action': 'buy', 'info': f'Price momentum: {price_momentum:.2f}%, Vol momentum: {vol_momentum:.2f}%, RSI: {rsi:.1f}'}
         return {'action': 'hold', 'info': f'No buy: Price momentum {price_momentum:.2f}%, Vol momentum {vol_momentum:.2f}%, RSI {rsi:.1f}'}
@@ -54,7 +55,7 @@ class MomentumStrategy(TradingStrategy):
         if not position or not curr or entry_price is None or entry_time is None:
             return {'shouldSell': False, 'reason': 'Missing data', 'info': ''}
         pnl_pct = ((curr.close - entry_price) / entry_price) * 100
-        time_held = datetime.now() - entry_time
+        time_held = datetime.now(pytz.UTC) - entry_time
         if pnl_pct < -8:
             return {'shouldSell': True, 'reason': 'stop_loss', 'info': f'Stop loss: {pnl_pct:.2f}%'}
         if pnl_pct > 15:

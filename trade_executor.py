@@ -26,6 +26,7 @@ from lib.jupiter_client import JupiterClient
 from lib.helius_client import HeliusClient
 from core.strategy_factory import StrategyFactory
 from core.strategy_interface import Candle, StrategyConfig
+from core.backtest import run_backtest
 
 import os
 import importlib
@@ -34,6 +35,8 @@ from pathlib import Path
 
 # Initialize Rich console
 console = Console()
+
+# Global signal handler will be set up in main() to avoid conflicts with TradeExecutor
 
 
 class TradeExecutor:
@@ -65,7 +68,7 @@ class TradeExecutor:
         self.helius = HeliusClient()
         self.debug = Debugger.getInstance()
         
-        # Register signal handlers
+        # Register signal handlers for trading loop
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
     
@@ -429,6 +432,9 @@ def get_token_id() -> int:
                 
             except ValueError:
                 console.print("❌ [red]Invalid input. Please enter a valid number.[/red]")
+            except KeyboardInterrupt:
+                console.print("\n👋 [yellow]Exiting...[/yellow]")
+                sys.exit(0)
     finally:
         prisma.disconnect()
 
@@ -448,11 +454,14 @@ def select_strategy() -> str:
     table.add_column("Balance", style="blue", width=12)
     table.add_column("Slippage", style="red", width=10)
     
-    for strategy_name in strategies:
+    strategy_names = []
+    for strategy_info in strategies:
+        strategy_name = strategy_info['name'].lower()
+        strategy_names.append(strategy_name)
         config = StrategyFactory.get_strategy_config(strategy_name)
         table.add_row(
-            f"[bold]{strategy_name.upper()}[/bold]",
-            f"{config.name} Strategy",
+            f"[bold]{strategy_info['name'].upper()}[/bold]",
+            strategy_info['description'],
             f"{config.lookback_periods} periods",
             f"{config.balance_percentage * 100:.1f}%",
             f"{config.default_slippage_bps / 100}%"
@@ -465,8 +474,8 @@ def select_strategy() -> str:
         try:
             choice = Prompt.ask(
                 "\n[bold cyan]Select strategy[/bold cyan]",
-                choices=strategies,
-                default=strategies[0]
+                choices=strategy_names,
+                default=strategy_names[0]
             )
             return choice
         except KeyboardInterrupt:
@@ -492,12 +501,15 @@ def simple_strategy_selection() -> str:
     table.add_column("Balance", style="blue", width=12)
     table.add_column("Slippage", style="red", width=10)
     
-    for i, strategy_name in enumerate(strategies, 1):
+    strategy_names = []
+    for i, strategy_info in enumerate(strategies, 1):
+        strategy_name = strategy_info['name'].lower()
+        strategy_names.append(strategy_name)
         config = StrategyFactory.get_strategy_config(strategy_name)
         table.add_row(
             str(i),
-            f"[bold]{strategy_name.upper()}[/bold]",
-            f"{config.name} Strategy",
+            f"[bold]{strategy_info['name'].upper()}[/bold]",
+            strategy_info['description'],
             f"{config.lookback_periods} periods",
             f"{config.balance_percentage * 100:.1f}%",
             f"{config.default_slippage_bps / 100}%"
@@ -513,7 +525,7 @@ def simple_strategy_selection() -> str:
             )
             choice_num = int(choice)
             if 1 <= choice_num <= len(strategies):
-                return strategies[choice_num - 1]
+                return strategy_names[choice_num - 1]
             else:
                 console.print(f"❌ [red]Please enter a number between 1 and {len(strategies)}[/red]")
         except ValueError:
@@ -521,6 +533,45 @@ def simple_strategy_selection() -> str:
         except KeyboardInterrupt:
             console.print("\n👋 [yellow]Exiting...[/yellow]")
             sys.exit(0)
+
+
+def select_mode() -> str:
+    """Select between backtest and auto-trade modes"""
+    console.print("\n[bold cyan]Select Mode:[/bold cyan]")
+    
+    mode_table = Table(
+        show_header=True,
+        header_style="bold cyan"
+    )
+    
+    mode_table.add_column("Mode", style="bold green", width=15)
+    mode_table.add_column("Description", style="white", width=40)
+    
+    mode_table.add_row(
+        "[bold]BACKTEST[/bold]",
+        "Test strategy on historical data with analysis and plots"
+    )
+    mode_table.add_row(
+        "[bold]AUTO-TRADE[/bold]",
+        "Run live trading bot with real-time execution"
+    )
+    
+    console.print(mode_table)
+    
+    while True:
+        try:
+            choice = Prompt.ask(
+                "\n[bold cyan]Select mode[/bold cyan]",
+                choices=["backtest", "auto-trade"],
+                default="backtest"
+            )
+            return choice
+        except KeyboardInterrupt:
+            console.print("\n👋 [yellow]Exiting...[/yellow]")
+            sys.exit(0)
+
+
+
 
 def validate_strategies_config():
     """Validate that all strategies in config.json exist as files and classes."""
@@ -556,65 +607,123 @@ def validate_strategies_config():
 
 async def main():
     """Main entry point with interactive CLI"""
-    validate_strategies_config()
-    # Beautiful ASCII art header
-    header = Panel(
-        Align.center(
-            Text("███╗   ███╗ █████╗ ██╗██╗  ██╗", style="bold cyan") + "\n" +
-            Text("████╗ ████║██╔══██╗██║╚██╗██╔╝", style="bold cyan") + "\n" +
-            Text("██╔████╔██║███████║██║ ╚███╔╝ ", style="bold cyan") + "\n" +
-            Text("██║╚██╔╝██║██╔══██║██║ ██╔██╗ ", style="bold cyan") + "\n" +
-            Text("██║ ╚═╝ ██║██║  ██║██║██╔╝ ██╗", style="bold cyan") + "\n" +
-            Text("╚═╝     ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝", style="bold cyan") + "\n\n" +
-            Text("    Algorithmic Trading Platform", style="bold white"),
-            vertical="middle"
-        ),
-        box=box.DOUBLE,
-        border_style="cyan",
-        padding=(1, 2)
-    )
-    console.print(header)
-    
-    # Get token ID
-    token_id = get_token_id()
-    
-    # Get strategy selection
-    try:
-        strategy_name = select_strategy()
-    except (ImportError, OSError):
-        # Fallback to simple selection if cursor navigation fails
-        console.print("⚠️  [yellow]Cursor navigation not available, using simple selection...[/yellow]")
-        strategy_name = simple_strategy_selection()
-    
-    # Display final configuration in a beautiful table
-    config = StrategyFactory.get_strategy_config(strategy_name)
-    
-    config_table = Table(
-        show_header=True,
-        header_style="bold cyan"
-    )
-    
-    config_table.add_column("Parameter", style="bold white", width=15)
-    config_table.add_column("Value", style="green", width=20)
-    
-    config_table.add_row("Token ID", str(token_id))
-    config_table.add_row("Strategy", f"[bold]{strategy_name.upper()}[/bold]")
-    config_table.add_row("Lookback", f"{config.lookback_periods} periods")
-    config_table.add_row("Balance", f"{config.balance_percentage * 100:.1f}%")
-    config_table.add_row("Slippage", f"{config.default_slippage_bps / 100}%")
-    config_table.add_row("Min Trade", f"{config.min_trade_size_sol} SOL")
-    config_table.add_row("Fee Buffer", f"{config.fee_buffer_sol} SOL")
-    
-    console.print(config_table)
-    
-    # Confirm before starting
-    if Confirm.ask("\n🚀 [bold cyan]Start trading?[/bold cyan]"):
-        console.print("\n🔄 [bold green]Starting trading bot...[/bold green]")
-        executor = TradeExecutor(strategy_name, token_id)
-        await executor.run()
-    else:
-        console.print("👋 [yellow]Exiting...[/yellow]")
+    # Set up global signal handler for graceful shutdown
+    def global_signal_handler(signum, frame):
+        console.print("\n\n👋 [yellow]Graceful shutdown requested. Exiting...[/yellow]")
         sys.exit(0)
+    
+    # Register global signal handlers (will be overridden by TradeExecutor when needed)
+    signal.signal(signal.SIGINT, global_signal_handler)
+    signal.signal(signal.SIGTERM, global_signal_handler)
+    
+    validate_strategies_config()
+    
+    while True:
+        try:
+            # Beautiful ASCII art header
+            header = Panel(
+                Align.center(
+                    Text("███╗   ███╗ █████╗ ██╗██╗  ██╗", style="bold cyan") + "\n" +
+                    Text("████╗ ████║██╔══██╗██║╚██╗██╔╝", style="bold cyan") + "\n" +
+                    Text("██╔████╔██║███████║██║ ╚███╔╝ ", style="bold cyan") + "\n" +
+                    Text("██║╚██╔╝██║██╔══██║██║ ██╔██╗ ", style="bold cyan") + "\n" +
+                    Text("██║ ╚═╝ ██║██║  ██║██║██╔╝ ██╗", style="bold cyan") + "\n" +
+                    Text("╚═╝     ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝", style="bold cyan") + "\n\n" +
+                    Text("    Algorithmic Trading Platform", style="bold white"),
+                    vertical="middle"
+                ),
+                box=box.DOUBLE,
+                border_style="cyan",
+                padding=(1, 2)
+            )
+            console.print(header)
+            
+            # Get token ID
+            token_id = get_token_id()
+            
+            while True:
+                # Get strategy selection
+                try:
+                    strategy_name = select_strategy()
+                except (ImportError, OSError):
+                    # Fallback to simple selection if cursor navigation fails
+                    console.print("⚠️  [yellow]Cursor navigation not available, using simple selection...[/yellow]")
+                    strategy_name = simple_strategy_selection()
+                
+                # Display final configuration in a beautiful table
+                config = StrategyFactory.get_strategy_config(strategy_name)
+                
+                config_table = Table(
+                    show_header=True,
+                    header_style="bold cyan"
+                )
+                
+                config_table.add_column("Parameter", style="bold white", width=15)
+                config_table.add_column("Value", style="green", width=20)
+                
+                config_table.add_row("Token ID", str(token_id))
+                config_table.add_row("Strategy", f"[bold]{strategy_name.upper()}[/bold]")
+                config_table.add_row("Lookback", f"{config.lookback_periods} periods")
+                config_table.add_row("Balance", f"{config.balance_percentage * 100:.1f}%")
+                config_table.add_row("Slippage", f"{config.default_slippage_bps / 100}%")
+                config_table.add_row("Min Trade", f"{config.min_trade_size_sol} SOL")
+                config_table.add_row("Fee Buffer", f"{config.fee_buffer_sol} SOL")
+                
+                console.print(config_table)
+                
+                # Select mode
+                mode = select_mode()
+                
+                if mode == "backtest":
+                    # Run backtest with all available data
+                    try:
+                        run_backtest(strategy_name, token_id)
+                        
+                        # Ask if user wants to try another strategy or exit
+                        if Confirm.ask("\n🔄 [bold cyan]Try another strategy?[/bold cyan]"):
+                            console.print("\n" + "="*80 + "\n")
+                            continue  # Go back to strategy selection, same token_id
+                        else:
+                            console.print("👋 [yellow]Exiting...[/yellow]")
+                            sys.exit(0)
+                            
+                    except Exception as e:
+                        console.print(f"[red]Backtest failed: {str(e)}[/red]")
+                        if Confirm.ask("\n🔄 [bold cyan]Try again?[/bold cyan]"):
+                            continue
+                        else:
+                            console.print("👋 [yellow]Exiting...[/yellow]")
+                            sys.exit(0)
+                
+                elif mode == "auto-trade":
+                    # Confirm before starting auto-trade
+                    if Confirm.ask("\n🚀 [bold cyan]Start auto-trading?[/bold cyan]"):
+                        console.print("\n🔄 [bold green]Starting trading bot...[/bold green]")
+                        executor = TradeExecutor(strategy_name, token_id)
+                        await executor.run()
+                        
+                        # After auto-trade ends, ask if user wants to try another strategy
+                        if Confirm.ask("\n🔄 [bold cyan]Try another strategy?[/bold cyan]"):
+                            console.print("\n" + "="*80 + "\n")
+                            continue  # Go back to strategy selection, same token_id
+                        else:
+                            console.print("👋 [yellow]Exiting...[/yellow]")
+                            sys.exit(0)
+                    else:
+                        console.print("👋 [yellow]Exiting...[/yellow]")
+                        sys.exit(0)
+                
+        except KeyboardInterrupt:
+            console.print("\n\n👋 [yellow]Graceful shutdown requested. Exiting...[/yellow]")
+            sys.exit(0)
+        except Exception as e:
+            console.print(f"\n[red]Unexpected error: {str(e)}[/red]")
+            if Confirm.ask("\n🔄 [bold cyan]Try again?[/bold cyan]"):
+                console.print("\n" + "="*80 + "\n")
+                continue
+            else:
+                console.print("👋 [yellow]Exiting...[/yellow]")
+                sys.exit(0)
 
 
 if __name__ == "__main__":

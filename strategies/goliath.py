@@ -1,5 +1,6 @@
 from typing import Dict, Any
 from datetime import datetime, timedelta
+import pytz
 from core.strategy_interface import TradingStrategy, StrategyConfig, Candle, Position
 
 class GoliathStrategy(TradingStrategy):
@@ -28,7 +29,7 @@ class GoliathStrategy(TradingStrategy):
         avg_vol = sum(c.volume for c in lookback[-20:]) / 20
         high_vol = curr.volume > 1.5 * avg_vol
         price_above_ma = curr.close > ma20
-        cooldown_ok = last_exit_time is None or (datetime.now() - last_exit_time) > timedelta(minutes=5)
+        cooldown_ok = last_exit_time is None or (datetime.now(pytz.UTC) - last_exit_time) > timedelta(minutes=5)
         if price_above_ma and high_vol and cooldown_ok:
             return {'action': 'buy', 'info': f'Price {curr.close:.6f} > MA20 {ma20:.6f}, High Vol: {curr.volume:.2f} > {1.5*avg_vol:.2f}'}
         return {'action': 'hold', 'info': 'No buy signal'}
@@ -41,7 +42,7 @@ class GoliathStrategy(TradingStrategy):
         if not position or not curr or entry_price is None or entry_time is None:
             return {'shouldSell': False, 'reason': 'Missing data', 'info': ''}
         pnl_pct = ((curr.close - entry_price) / entry_price) * 100
-        time_held = datetime.now() - entry_time
+        time_held = datetime.now(pytz.UTC) - entry_time
         if pnl_pct < -10:
             return {'shouldSell': True, 'reason': 'stop_loss', 'info': f'Stop loss: {pnl_pct:.2f}%'}
         if pnl_pct > 20:

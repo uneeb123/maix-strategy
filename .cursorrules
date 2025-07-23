@@ -1,1 +1,2 @@
 - The name of our project is Maix Strategy
+- Prisma schema is configured for synchronous operations (interface = "sync")
