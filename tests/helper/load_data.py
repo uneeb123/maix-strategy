@@ -22,8 +22,18 @@ def load_sample_candles(token_id=15158):
         with open(file_path, 'r') as f:
             data = json.load(f)
         
+        # Handle both old format (list) and new format (dict with token_meta and ohlcv_data)
+        if isinstance(data, list):
+            # Old format - just OHLCV data
+            ohlcv_data = data
+            token_meta = None
+        else:
+            # New format - structured data
+            ohlcv_data = data.get('ohlcv_data', [])
+            token_meta = data.get('token_meta')
+        
         candles = []
-        for item in data:
+        for item in ohlcv_data:
             # Parse timestamp from ISO format
             timestamp = datetime.fromisoformat(item['timestamp'])
             candles.append(Candle(
@@ -36,7 +46,10 @@ def load_sample_candles(token_id=15158):
             ))
         
         print(f"✅ Loaded {len(candles)} candles from {file_path}")
-        return candles
+        if token_meta:
+            print(f"✅ Token: {token_meta.get('symbol', 'Unknown')} ({token_meta.get('name', 'Unknown')})")
+        
+        return candles, token_meta
         
     except Exception as e:
         print(f"❌ Error loading data: {e}")

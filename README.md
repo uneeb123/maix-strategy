@@ -203,48 +203,98 @@ The modular architecture makes it easy to add new trading strategies.
   }
   ```
 
-### Strategy Development Tips
-
-1. **Start Simple**: Begin with basic indicators like moving averages
-2. **Test Thoroughly**: Use historical data to backtest your strategy
-3. **Risk Management**: Always implement stop-loss and take-profit
-4. **Cooldown Periods**: Add delays between trades to avoid overtrading
-5. **Logging**: Use descriptive info messages for debugging
-6. **Configuration**: Make parameters configurable through StrategyConfig
-
-### Available Data
-
-Your strategy methods receive the following data:
-
-**Buy Signal Data:**
-
-- `lookback`: List of historical candles (Candle objects)
-- `curr`: Current candle (Candle object)
-- `last_exit_time`: Last exit time for cooldown logic
-
-**Sell Signal Data:**
-
-- `position`: Position object with entry details
-- `curr`: Current candle (Candle object)
-- `entry_price`: Original entry price
-- `entry_time`: Original entry time
-
-**Candle Object Properties:**
-
-- `timestamp`: Candle timestamp
-- `open`, `high`, `low`, `close`: OHLC prices
-- `volume`: Trading volume
-
 ## Running Tests
+
+### Running All Tests
 
 From the project root directory, run:
 
 ```bash
-python3 -m tests.test_backtest
+# Run all tests
+python3 -m pytest tests/
+
+# Run with verbose output
+python3 -m pytest tests/ -v
+
+# Run with coverage report
+python3 -m pytest tests/ --cov=core --cov=strategies
 ```
 
-This ensures all imports work correctly.
-Make sure your virtual environment is activated before running tests.
+### Running Specific Test Files
+
+```bash
+# Test backtesting functionality
+python3 -m pytest tests/core/test_backtest.py -v
+
+# Test plotting functionality
+python3 -m pytest tests/core/test_plotter.py -v
+
+# Test strategy implementations
+python3 -m pytest tests/strategies/ -v
+```
+
+### Running Individual Test Functions
+
+```bash
+# Run specific test function
+python3 -m pytest tests/core/test_plotter.py::test_basic_plot -v
+
+# Run tests matching a pattern
+python3 -m pytest tests/ -k "plot" -v
+```
+
+### Fetching Test Data
+
+The `fetch_data.py` utility fetches real trading data from the database for testing:
+
+```bash
+# Fetch data for default token (ID: 15158)
+python3 tests/helper/fetch_data.py
+
+# Or import and use in Python
+python3 -c "
+from tests.helper.fetch_data import fetch_token_data
+fetch_token_data(token_id=15158, lookback_periods=100)
+"
+```
+
+This will:
+
+- Connect to the database using Prisma
+- Fetch OHLCV data for the specified token
+- Save the data to `tests/helper/sample_data.json`
+- Display the number of records fetched
+
+### Testing Plotter Functionality
+
+The `test_plotter.py` tests verify the plotting functionality:
+
+```bash
+# Run all plotter tests
+python3 -m pytest tests/core/test_plotter.py -v
+
+# Test specific plotting scenarios
+python3 -m pytest tests/core/test_plotter.py::test_basic_plot -v
+python3 -m pytest tests/core/test_plotter.py::test_plot_with_signals -v
+```
+
+The plotter tests verify:
+
+- Basic plotting without signals
+- Plotting with buy/sell signals
+- Empty data handling
+- File extension validation
+- Artifacts directory structure
+
+### Test Data Requirements
+
+Some tests require:
+
+- Database connection (for `fetch_data.py`)
+- Sample data file (`tests/helper/sample_data.json`)
+- Generated plot files in `artifacts/` directory
+
+Ensure your database is running and accessible before running tests that fetch data.
 
 ## Project Structure
 

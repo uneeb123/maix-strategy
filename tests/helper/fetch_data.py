@@ -37,10 +37,27 @@ def fetch_token_data(token_id=15158, lookback_periods=100):
                 'volume': float(row.volumeUSD)
             })
         
+        # Create complete data structure with token meta and OHLCV data
+        complete_data = {
+            'token_meta': {
+                'id': token_meta.id,
+                'symbol': token_meta.symbol,
+                'name': token_meta.name,
+                'address': token_meta.address,
+                'networkId': token_meta.networkId,
+                'marketCap': float(token_meta.marketCap),
+                'priceUSD': float(token_meta.priceUSD),
+                'twitter': token_meta.twitter,
+                'website': token_meta.website,
+                'description': token_meta.description
+            },
+            'ohlcv_data': data
+        }
+        
         # Save to JSON file
         file_path = "tests/helper/sample_data.json"
         with open(file_path, 'w') as f:
-            json.dump(data, f, indent=2)
+            json.dump(complete_data, f, indent=2)
         
         print(f"✅ Fetched {len(data)} records for token {token_id} ({token_meta.symbol})")
         print(f"✅ Data saved to {file_path}")

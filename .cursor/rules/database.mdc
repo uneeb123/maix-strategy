@@ -4,5 +4,63 @@ globs:
 alwaysApply: false
 ---
 
-- The name of our project is Maix Strategy
 - Prisma schema is configured for synchronous operations (interface = "sync")
+- The Token information is stored in Migration token model.
+- The OHLCV data is stored in TokenOHLCV model.
+
+# Database Models
+
+## MigratedToken Model
+
+- **id**: Int (Primary Key, auto-increment)
+- **name**: String
+- **symbol**: String
+- **createdAt**: DateTime
+- **migratedAt**: DateTime? (Optional)
+- **address**: String
+- **networkId**: Int
+- **twitter**: String? (Optional)
+- **website**: String? (Optional)
+- **imageBannerUrl**: String? (Optional)
+- **imageSmallUrl**: String? (Optional)
+- **description**: String? (Optional)
+- **marketCap**: Float
+- **priceUSD**: Float
+- **launchpadId**: Int? (Optional, Foreign Key to Launchpad)
+- **dead**: Boolean (Default: false)
+- **TokenOHLCV**: One-to-Many relationship with TokenOHLCV
+
+**Unique Constraints**: `[address, networkId]`
+
+## TokenOHLCV Model
+
+- **id**: Int (Primary Key, auto-increment)
+- **tokenId**: Int (Foreign Key to MigratedToken)
+- **timestamp**: DateTime
+- **interval**: String
+- **open**: Float
+- **high**: Float
+- **low**: Float
+- **close**: Float
+- **volume**: Float
+- **volumeUSD**: Float
+- **currency**: String
+- **createdAt**: DateTime (Default: now())
+
+**Unique Constraints**: `[tokenId, timestamp, interval]`
+**Indexes**: `[tokenId]`, `[interval]`
+
+## Launchpad Model
+
+- **id**: Int (Primary Key, auto-increment)
+- **launchpadName**: String
+- **launchpadProtocol**: String
+- **migratedTokens**: One-to-Many relationship with MigratedToken
+
+**Unique Constraints**: `[launchpadName, launchpadProtocol]`
+
+## Relationships
+
+- MigratedToken has a one-to-many relationship with TokenOHLCV
+- MigratedToken has an optional one-to-one relationship with Launchpad
+- Launchpad has a one-to-many relationship with MigratedToken
