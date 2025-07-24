@@ -1,0 +1,1 @@
+# Trading Extrema Algorithms Package 

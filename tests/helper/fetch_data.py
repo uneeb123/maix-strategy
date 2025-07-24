@@ -7,8 +7,8 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from prisma import Prisma
 
-def fetch_token_data(token_id=15158, lookback_periods=100):
-    """Fetch real trading data from database using Prisma and save as JSON"""
+def fetch_token_data(token_id=15158):
+    """Fetch all real trading data from database using Prisma and save as JSON"""
     prisma = Prisma()
     prisma.connect()
     
@@ -19,12 +19,10 @@ def fetch_token_data(token_id=15158, lookback_periods=100):
         
         ohlcv = prisma.tokenohlcv.find_many(
             where={'tokenId': token_id, 'interval': '1s'},
-            order=[{'timestamp': 'desc'}],
-            take=lookback_periods
+            order=[{'timestamp': 'desc'}]
         )
         
-        if len(ohlcv) < lookback_periods:
-            print(f"⚠️  Only {len(ohlcv)} records found, requested {lookback_periods}")
+        print(f"📊 Found {len(ohlcv)} total records")
         
         data = []
         for row in reversed(ohlcv):
@@ -71,4 +69,4 @@ def fetch_token_data(token_id=15158, lookback_periods=100):
 
 if __name__ == "__main__":
     # Fetch data when run directly
-    fetch_token_data(15158, 100) 
+    fetch_token_data(15156) 
