@@ -1,13 +1,4 @@
-import json
-import os
-import sys
-from pathlib import Path
-from typing import List, Tuple, Dict, Any
-
-# Add project root to path
-sys.path.append(str(Path(__file__).parent.parent.parent.parent))
-
-from tests.helper.load_data import load_sample_candles
+from typing import List, Tuple
 
 def zigzag_strategy(prices: List[float], timestamps: List[int], threshold_pct: float = 0.015) -> List[Tuple[int, float]]:
     """
@@ -64,14 +55,13 @@ def zigzag_strategy(prices: List[float], timestamps: List[int], threshold_pct: f
     
     return pivots
 
-def find_zigzag_signals(candles: List, threshold_pct: float = 0.015, max_points: int = 15) -> Tuple[List[Tuple], List[Tuple]]:
+def find_zigzag_signals(candles: List, threshold_pct: float = 0.015) -> Tuple[List[Tuple], List[Tuple]]:
     """
     Find ZigZag pivot points and generate buy/sell signals
     
     Args:
         candles: List of Candle objects
         threshold_pct: Percentage threshold for pivot detection (default: 1.5%)
-        max_points: Maximum number of points to return per type (default: 15)
     
     Returns:
         Tuple of (buy_points, sell_points) where each point is (timestamp, price)
@@ -106,9 +96,5 @@ def find_zigzag_signals(candles: List, threshold_pct: float = 0.015, max_points:
     # Sort by timestamp
     buy_points.sort(key=lambda x: x[0])
     sell_points.sort(key=lambda x: x[0])
-    
-    # Limit to max_points
-    buy_points = buy_points[:max_points]
-    sell_points = sell_points[:max_points]
     
     return buy_points, sell_points 

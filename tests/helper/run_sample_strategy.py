@@ -52,11 +52,11 @@ def save_analysis_to_json(buy_points: List[Tuple], sell_points: List[Tuple],
 def run_sample_strategy(token_id: int = 15158, deviation: float = 0.05, window: int = 5, strength: int = 2):
     candles, token_meta = load_sample_candles(token_id)
     
-    buy_points, sell_points = find_zigzag(candles, deviation)
-    # buy_points, sell_points = find_zigzag_signals(candles)
-    # buy_points, sell_points = find_fractals(candles, window)
-    # buy_points, sell_points = find_pivot_points(candles, window)
-    # buy_points, sell_points = find_swings(candles, strength)
+    # buy_points, sell_points = find_zigzag(candles, 0.05)
+    # buy_points, sell_points = find_zigzag_signals(candles, 0.03)
+    # buy_points, sell_points = find_fractals(candles, 50)
+    buy_points, sell_points = find_pivot_points(candles, 50)
+    # buy_points, sell_points = find_swings(candles, 50)
     save_analysis_to_json(buy_points, sell_points, token_meta, output_file="tests/helper/sample_analysis.json")
 
 if __name__ == "__main__":

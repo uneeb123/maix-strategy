@@ -1,11 +1,4 @@
-import json
-import os
-import sys
-from pathlib import Path
-from typing import List, Tuple, Dict, Any
-
-# Add project root to path
-sys.path.append(str(Path(__file__).parent.parent.parent.parent))
+from typing import List, Tuple
 
 from tests.helper.load_data import load_sample_candles
 
@@ -39,14 +32,13 @@ def pivot_points_strategy(highs: List[float], lows: List[float], closes: List[fl
     
     return pivots
 
-def find_pivot_points(candles: List, window: int = 5, max_points: int = 15) -> Tuple[List[Tuple], List[Tuple]]:
+def find_pivot_points(candles: List, window: int = 5) -> Tuple[List[Tuple], List[Tuple]]:
     """
     Find pivot points in candle data.
     
     Args:
         candles: List of Candle objects
         window: Window size for finding pivots (default: 5)
-        max_points: Maximum number of points to return per type (default: 15)
     
     Returns:
         Tuple of (buy_points, sell_points) where each point is (timestamp, price)
@@ -72,8 +64,8 @@ def find_pivot_points(candles: List, window: int = 5, max_points: int = 15) -> T
     support_points.sort(key=lambda x: x[0])
     resistance_points.sort(key=lambda x: x[0])
     
-    # Limit to max_points
-    buy_points = [(point[0], point[1]) for point in support_points[:max_points]]
-    sell_points = [(point[0], point[1]) for point in resistance_points[:max_points]]
+    # Remove max_points limitation, return all points
+    buy_points = [(point[0], point[1]) for point in support_points]
+    sell_points = [(point[0], point[1]) for point in resistance_points]
     
     return buy_points, sell_points
