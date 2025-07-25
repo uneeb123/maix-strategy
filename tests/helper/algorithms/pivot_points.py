@@ -1,7 +1,5 @@
 from typing import List, Tuple
 
-from tests.helper.load_data import load_sample_candles
-
 def pivot_points_strategy(highs: List[float], lows: List[float], closes: List[float], 
                          window: int = 5) -> List[Tuple[str, int, float]]:
     """
