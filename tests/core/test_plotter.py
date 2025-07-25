@@ -33,13 +33,13 @@ def sell_points():
     return sell_points  # Use all significant sell points
 
 def test_plot_with_signals(sample_candles, buy_points, sell_points, token_meta):
-    strategy_name = f"test_strategy_{token_meta.get('name')}"
+    strategy_name = f"Test Strategy"
+    token_title = f"{token_meta.get('name')} ({token_meta.get('id')})"
     result = plot_trading_signals(
         sample_candles, 
-        0, 
+        token_title, 
         strategy_name,
         buy_points=buy_points,
         sell_points=sell_points
     )
     assert result is not None
-    assert os.path.exists(result)

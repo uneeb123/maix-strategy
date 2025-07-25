@@ -1,10 +1,5 @@
-import os
-import mplfinance as mpf
-import matplotlib.pyplot as plt
-import platform
-import subprocess
-import warnings
-import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import pandas as pd
 from datetime import datetime
 from typing import List, Tuple
@@ -15,7 +10,7 @@ console = Console()
 
 def plot_trading_signals(
     candles: List[Candle], 
-    token_id: int,
+    token_title: str,
     strategy_name: str,
     buy_points: List[Tuple[datetime, float]] = None,
     sell_points: List[Tuple[datetime, float]] = None
@@ -39,101 +34,107 @@ def plot_trading_signals(
         ])
         df.set_index('timestamp', inplace=True)
         
-        # Create markers for buy/sell points
-        buy_marker = np.full(len(df), np.nan)
-        sell_marker = np.full(len(df), np.nan)
-        
-        # Map timestamps to DataFrame indices
-        time_to_idx = {pd.Timestamp(t): i for i, t in enumerate(df.index)}
-        
-        # Mark buy points (local minima)
-        if buy_points:
-            for timestamp, price in buy_points:
-                idx = time_to_idx.get(pd.Timestamp(timestamp))
-                if idx is not None:
-                    buy_marker[idx] = price
-        
-        # Mark sell points (local maxima)
-        if sell_points:
-            for timestamp, price in sell_points:
-                idx = time_to_idx.get(pd.Timestamp(timestamp))
-                if idx is not None:
-                    sell_marker[idx] = price
-        
-        # Create additional plots
-        apds = []
-        if np.any(~np.isnan(buy_marker)):
-            apds.append(mpf.make_addplot(
-                buy_marker, 
-                type='scatter', 
-                markersize=150, 
-                marker='^', 
-                color='green', 
-                panel=0,
-                label='Buy Signals'
-            ))
-        
-        if np.any(~np.isnan(sell_marker)):
-            apds.append(mpf.make_addplot(
-                sell_marker, 
-                type='scatter', 
-                markersize=150, 
-                marker='v', 
-                color='red', 
-                panel=0,
-                label='Sell Signals'
-            ))
-        
-        # Create artifacts directory
-        artifacts_dir = 'artifacts'
-        os.makedirs(artifacts_dir, exist_ok=True)
-        
-        # Generate filename
-        now_str = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"{token_id}_{strategy_name}_{now_str}.png"
-            
-        image_path = os.path.join(artifacts_dir, filename)
-        
-        # Create the plot
-        fig, axes = mpf.plot(
-            df,
-            type='candle',
-            volume=True,
-            addplot=apds,
-            returnfig=True,
-            figscale=1.2,
-            figratio=(16, 9),
-            style='yahoo',
-            panel_ratios=(3, 1),
-            warn_too_much_data=4000
+        # Create subplots
+        fig = make_subplots(
+            rows=2, cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.03,
+            subplot_titles=(f'{token_title}', 'Volume'),
+            row_width=[0.2, 0.8]
         )
         
-        # Add legend
-        if apds:
-            axes[0].legend()
+        # Add candlestick chart
+        fig.add_trace(
+            go.Candlestick(
+                x=df.index,
+                open=df['Open'],
+                high=df['High'],
+                low=df['Low'],
+                close=df['Close'],
+                name='OHLC',
+                increasing_line_color='#26A69A',
+                decreasing_line_color='#EF5350'
+            ),
+            row=1, col=1
+        )
         
-        # Save and close
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            plt.tight_layout()
+        # Add volume bars with better visibility
+        colors = ['#26A69A' if close >= open else '#EF5350' 
+                 for close, open in zip(df['Close'], df['Open'])]
         
-        plt.savefig(image_path, dpi=300, bbox_inches='tight')
-        plt.close(fig)
+        fig.add_trace(
+            go.Bar(
+                x=df.index,
+                y=df['Volume'],
+                name='Volume',
+                marker_color=colors,
+                opacity=0.8,
+                width=0.8,
+                marker_line_width=0
+            ),
+            row=2, col=1
+        )
         
-        console.print(f"[green]Saved extrema detection plot to {image_path}[/green]")
+        # Add buy signals
+        if buy_points:
+            buy_df = pd.DataFrame(buy_points, columns=['timestamp', 'price'])
+            fig.add_trace(
+                go.Scatter(
+                    x=buy_df['timestamp'],
+                    y=buy_df['price'],
+                    mode='markers',
+                    name='Buy Signals',
+                    marker=dict(
+                        symbol='triangle-up',
+                        size=12,
+                        color='green',
+                        line=dict(width=2, color='darkgreen')
+                    )
+                ),
+                row=1, col=1
+            )
         
-        # Try to open the image
-        try:
-            if platform.system() == "Darwin":
-                subprocess.run(["open", image_path], check=False)
-            elif platform.system() == "Windows":
-                os.startfile(image_path)
-            else:
-                subprocess.run(["xdg-open", image_path], check=False)
-        except Exception as e:
-            console.print(f"[yellow]Could not open image automatically: {e}[/yellow]")
+        # Add sell signals
+        if sell_points:
+            sell_df = pd.DataFrame(sell_points, columns=['timestamp', 'price'])
+            fig.add_trace(
+                go.Scatter(
+                    x=sell_df['timestamp'],
+                    y=sell_df['price'],
+                    mode='markers',
+                    name='Sell Signals',
+                    marker=dict(
+                        symbol='triangle-down',
+                        size=12,
+                        color='red',
+                        line=dict(width=2, color='darkred')
+                    )
+                ),
+                row=1, col=1
+            )
         
-        return image_path
+        # Update layout
+        fig.update_layout(
+            title=f'{strategy_name}',
+            xaxis_rangeslider_visible=False,
+            height=800,
+            showlegend=True,
+            hovermode='x unified',
+            plot_bgcolor='white',
+            paper_bgcolor='white'
+        )
+        
+        # Update axes with better styling
+        fig.update_xaxes(title_text="Time", row=2, col=1, gridcolor='lightgray', showgrid=True)
+        fig.update_yaxes(title_text="Price", row=1, col=1, gridcolor='lightgray', showgrid=True)
+        fig.update_yaxes(title_text="Volume", row=2, col=1, gridcolor='lightgray', showgrid=True)
+        
+        # Show the plot in browser
+        fig.show(browser=True)
+        
+        console.print(f"[green]Opened interactive chart for {strategy_name} strategy[/green]")
+        
+        return "Interactive chart opened in browser"
         
     except Exception as e:
         console.print(f"[red]Error creating plot: {e}[/red]")
