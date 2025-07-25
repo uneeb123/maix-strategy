@@ -1,9 +1,9 @@
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
-from datetime import datetime
-from typing import List, Tuple
+from typing import List, Dict, Any, Optional
 from core.strategy_interface import Candle
+from core.indicators import calculate_pivot_points
 from rich.console import Console
 
 console = Console()
@@ -12,9 +12,18 @@ def plot_trading_signals(
     candles: List[Candle], 
     token_title: str,
     strategy_name: str,
-    buy_points: List[Tuple[datetime, float]] = None,
-    sell_points: List[Tuple[datetime, float]] = None
+    indicators: Optional[Dict[str, Dict[str, Any]]] = None
 ) -> str:
+    """
+    Plot trading signals with optional indicators.
+    
+    Args:
+        candles: List of Candle objects
+        token_title: Title for the token
+        strategy_name: Name of the strategy
+        indicators: Dictionary of indicators to plot with their parameters
+                   Example: {"pivot_points": {"window": 5}}
+    """
     if not candles:
         console.print("[red]No candle data to plot[/red]")
         return ""
@@ -75,43 +84,50 @@ def plot_trading_signals(
             row=2, col=1
         )
         
-        # Add buy signals
-        if buy_points:
-            buy_df = pd.DataFrame(buy_points, columns=['timestamp', 'price'])
-            fig.add_trace(
-                go.Scatter(
-                    x=buy_df['timestamp'],
-                    y=buy_df['price'],
-                    mode='markers',
-                    name='Buy Signals',
-                    marker=dict(
-                        symbol='triangle-up',
-                        size=12,
-                        color='green',
-                        line=dict(width=2, color='darkgreen')
-                    )
-                ),
-                row=1, col=1
-            )
-        
-        # Add sell signals
-        if sell_points:
-            sell_df = pd.DataFrame(sell_points, columns=['timestamp', 'price'])
-            fig.add_trace(
-                go.Scatter(
-                    x=sell_df['timestamp'],
-                    y=sell_df['price'],
-                    mode='markers',
-                    name='Sell Signals',
-                    marker=dict(
-                        symbol='triangle-down',
-                        size=12,
-                        color='red',
-                        line=dict(width=2, color='darkred')
-                    )
-                ),
-                row=1, col=1
-            )
+        # Add indicators
+        if indicators:
+            for indicator_name, params in indicators.items():
+                if indicator_name == "pivot_points":
+                    window = params.get("window", 5)
+                    pivot_low, pivot_high = calculate_pivot_points(candles, window)
+                    
+                    # Add pivot low points (support)
+                    if pivot_low:
+                        pivot_low_df = pd.DataFrame(pivot_low, columns=['timestamp', 'price'])
+                        fig.add_trace(
+                            go.Scatter(
+                                x=pivot_low_df['timestamp'],
+                                y=pivot_low_df['price'],
+                                mode='markers',
+                                name=f'Pivot Low (w={window})',
+                                marker=dict(
+                                    symbol='triangle-up',
+                                    size=10,
+                                    color='blue',
+                                    line=dict(width=1, color='darkblue')
+                                )
+                            ),
+                            row=1, col=1
+                        )
+                    
+                    # Add pivot high points (resistance)
+                    if pivot_high:
+                        pivot_high_df = pd.DataFrame(pivot_high, columns=['timestamp', 'price'])
+                        fig.add_trace(
+                            go.Scatter(
+                                x=pivot_high_df['timestamp'],
+                                y=pivot_high_df['price'],
+                                mode='markers',
+                                name=f'Pivot High (w={window})',
+                                marker=dict(
+                                    symbol='triangle-down',
+                                    size=10,
+                                    color='orange',
+                                    line=dict(width=1, color='darkorange')
+                                )
+                            ),
+                            row=1, col=1
+                        )
         
         # Update layout
         fig.update_layout(

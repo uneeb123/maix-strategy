@@ -1,8 +1,6 @@
-import os
 import pytest
 from core.plotter import plot_trading_signals
 from tests.helper.load_data import load_sample_candles
-from tests.helper.analyze_extrema import load_analysis_from_json
 
 @pytest.fixture
 def sample_data():
@@ -20,26 +18,34 @@ def token_meta(sample_data):
     """Extract token meta from sample data"""
     return sample_data[1]
 
-@pytest.fixture
-def buy_points():
-    """Load actual buy points from extrema analysis"""
-    buy_points, _, _ = load_analysis_from_json()
-    return buy_points  # Use all significant buy points
-
-@pytest.fixture
-def sell_points():
-    """Load actual sell points from extrema analysis"""
-    _, sell_points, _ = load_analysis_from_json()
-    return sell_points  # Use all significant sell points
-
-def test_plot_with_signals(sample_candles, buy_points, sell_points, token_meta):
-    strategy_name = f"Test Strategy"
+def test_plot(sample_candles, token_meta):
+    """Test basic plot without any indicators"""
+    strategy_name = "Test Strategy"
     token_title = f"{token_meta.get('name')} ({token_meta.get('id')})"
+    
+    result = plot_trading_signals(
+        sample_candles, 
+        token_title, 
+        strategy_name
+    )
+    assert result is not None
+
+def test_plot_with_pivot_points(sample_candles, token_meta):
+    """Test plot with pivot points indicator"""
+    strategy_name = "Test Strategy with Pivot Points"
+    token_title = f"{token_meta.get('name')} ({token_meta.get('id')})"
+    
+    # Define indicators with parameters
+    indicators = {
+        "pivot_points": {
+            "window": 50
+        }
+    }
+    
     result = plot_trading_signals(
         sample_candles, 
         token_title, 
         strategy_name,
-        buy_points=buy_points,
-        sell_points=sell_points
+        indicators=indicators
     )
     assert result is not None
