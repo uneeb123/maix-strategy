@@ -1,0 +1,61 @@
+---
+description: How to add strategies
+globs:
+alwaysApply: false
+---
+
+## How to Add New Strategies
+
+The project uses a modular strategy architecture that makes adding new strategies straightforward:
+
+### 1. Create the Strategy File and Class
+
+- Add a new file in the `strategies/` directory named `{name}.py` (e.g., `momentum.py` for a strategy called "Momentum")
+- Inside, define a class named `{name}Strategy` (e.g., `MomentumStrategy`) that implements the `TradingStrategy` interface
+- **IMPORTANT**: The class name must exactly match `{name}Strategy` where `{name}` is the exact value from the config.json file (case-sensitive)
+
+### 2. Update the Config
+
+- Add an entry to `strategies/config.json`:
+
+```json
+{
+  "name": "Momentum",
+  "description": "Captures price momentum."
+}
+```
+
+- The `name` field (case-insensitive) must match the filename and class name pattern
+
+### 3. That's it!
+
+The system will automatically detect and load your new strategy. If the file or class is missing or misnamed, the bot will show a clear error and exit.
+
+## Example
+
+- File: `strategies/mycustom.py`
+- Class: `MycustomStrategy`
+- Config:
+
+```json
+{
+  "name": "Mycustom",
+  "description": "My custom trading strategy."
+}
+```
+
+## Naming Rules
+
+- **Config name**: Must match the filename (case-insensitive) and class name pattern
+- **Class name**: Must be exactly `{name}Strategy` where `{name}` is the exact value from config.json
+- **File name**: Should be lowercase version of the config name (e.g., `EMA_Gradient` → `ema_gradient.py`)
+- **Case sensitivity**: Class names are case-sensitive and must match config exactly
+
+## Strategy Architecture
+
+Each strategy implements the `TradingStrategy` abstract base class with two main methods:
+
+- `should_buy()`: Determines if a buy signal should be triggered
+- `should_sell()`: Determines if an existing position should be sold
+
+The strategy pattern provides clean separation of trading logic from execution, easy testing, simple extension for new strategies, and configuration isolation per strategy.

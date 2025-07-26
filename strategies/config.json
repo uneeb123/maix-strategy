@@ -1,14 +1,6 @@
 [
   {
-    "name": "Goliath",
-    "description": "A large-volume trading strategy."
-  },
-  {
-    "name": "Local_Extrema",
-    "description": "A strategy that buys on local minima and sells on local maxima."
-  },
-  {
-    "name": "Momentum",
-    "description": "A momentum-based trading strategy."
+    "name": "EMA_Gradient",
+    "description": "A strategy that buys on positive EMA gradient and sells on negative gradient or profit targets."
   }
 ]

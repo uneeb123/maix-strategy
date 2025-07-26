@@ -3,3 +3,4 @@ alwaysApply: true
 ---
 
 - The name of our project is Maix Strategy
+- The main function should be at the top of the file and helper functions should be below them
