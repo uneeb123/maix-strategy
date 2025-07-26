@@ -242,20 +242,25 @@ class Backtester:
             console.print("[red]No data to plot[/red]")
             return
         
-        # Extract buy and sell points from positions
-        buy_points = [(p.entry_time, p.entry_price) for p in result.positions]
-        sell_points = [(p.exit_time, p.exit_price) for p in result.positions if p.exit_time and p.exit_price]
-        
-        # Use the core plotter
+        # Use the core plotter with EMA indicator
         try:
-            plot_path = plot_trading_signals(
+            token_title = f"Token {self.config.token_id}"
+            strategy_name = f"{self.config.name} Backtest"
+            
+            # Define indicators with EMA
+            indicators = {
+                "ema": {
+                    "period": 20
+                }
+            }
+            
+            plot_result = plot_trading_signals(
                 candles=candles,
-                token_id=self.config.token_id,
-                strategy_name=self.config.name.lower().replace(' ', '_'),
-                buy_points=buy_points,
-                sell_points=sell_points
+                token_title=token_title,
+                strategy_name=strategy_name,
+                indicators=indicators
             )
-            console.print(f"[green]Saved backtest plot to {plot_path}[/green]")
+            console.print(f"[green]Backtest plot created: {plot_result}[/green]")
         except Exception as e:
             console.print(f"[red]Error creating backtest plot: {e}[/red]")
             raise

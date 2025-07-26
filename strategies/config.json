@@ -4,7 +4,11 @@
     "description": "A large-volume trading strategy."
   },
   {
-    "name": "LocalExtrema",
+    "name": "Local_Extrema",
     "description": "A strategy that buys on local minima and sells on local maxima."
+  },
+  {
+    "name": "Momentum",
+    "description": "A momentum-based trading strategy."
   }
 ]

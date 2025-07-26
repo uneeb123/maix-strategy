@@ -3,12 +3,12 @@ from datetime import datetime, timedelta
 import pytz
 from core.strategy_interface import TradingStrategy, StrategyConfig, Candle, Position
 
-class LocalExtremaStrategy(TradingStrategy):
+class Local_ExtremaStrategy(TradingStrategy):
     """Local Extrema trading strategy: buys on local minima, sells on local maxima."""
     
     def __init__(self):
         config = StrategyConfig(
-            name="LocalExtrema",
+            name="Local_Extrema",
             token_id=15157,  # Example token ID, adjust as needed
             lookback_periods=20,
             balance_percentage=0.3,  # 30% of wallet balance
