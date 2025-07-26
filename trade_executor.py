@@ -76,8 +76,6 @@ def select_strategy() -> str:
     table.add_column("Strategy", style="bold green", width=15)
     table.add_column("Description", style="white", width=25)
     table.add_column("Lookback", style="yellow", width=10)
-    table.add_column("Balance", style="blue", width=12)
-    table.add_column("Slippage", style="red", width=10)
     
     strategy_names = []
     for strategy_info in strategies:
@@ -87,9 +85,7 @@ def select_strategy() -> str:
         table.add_row(
             f"[bold]{strategy_info['name'].upper()}[/bold]",
             strategy_info['description'],
-            f"{config.lookback_periods} periods",
-            f"{config.balance_percentage * 100:.1f}%",
-            f"{config.default_slippage_bps / 100}%"
+            f"{config.lookback_periods} periods"
         )
     
     console.print(table)
@@ -123,8 +119,6 @@ def simple_strategy_selection() -> str:
     table.add_column("Strategy", style="bold green", width=15)
     table.add_column("Description", style="white", width=25)
     table.add_column("Lookback", style="yellow", width=10)
-    table.add_column("Balance", style="blue", width=12)
-    table.add_column("Slippage", style="red", width=10)
     
     strategy_names = []
     for i, strategy_info in enumerate(strategies, 1):
@@ -135,9 +129,7 @@ def simple_strategy_selection() -> str:
             str(i),
             f"[bold]{strategy_info['name'].upper()}[/bold]",
             strategy_info['description'],
-            f"{config.lookback_periods} periods",
-            f"{config.balance_percentage * 100:.1f}%",
-            f"{config.default_slippage_bps / 100}%"
+            f"{config.lookback_periods} periods"
         )
     
     console.print(table)
@@ -194,6 +186,7 @@ def select_mode() -> str:
         except KeyboardInterrupt:
             console.print("\n👋 [yellow]Exiting...[/yellow]")
             sys.exit(0)
+
 
 
 
@@ -275,29 +268,10 @@ async def main():
                     console.print("⚠️  [yellow]Cursor navigation not available, using simple selection...[/yellow]")
                     strategy_name = simple_strategy_selection()
                 
-                # Display final configuration in a beautiful table
-                config = StrategyFactory.get_strategy_config(strategy_name)
-                
-                config_table = Table(
-                    show_header=True,
-                    header_style="bold cyan"
-                )
-                
-                config_table.add_column("Parameter", style="bold white", width=15)
-                config_table.add_column("Value", style="green", width=20)
-                
-                config_table.add_row("Token ID", str(token_id))
-                config_table.add_row("Strategy", f"[bold]{strategy_name.upper()}[/bold]")
-                config_table.add_row("Lookback", f"{config.lookback_periods} periods")
-                config_table.add_row("Balance", f"{config.balance_percentage * 100:.1f}%")
-                config_table.add_row("Slippage", f"{config.default_slippage_bps / 100}%")
-                config_table.add_row("Min Trade", f"{config.min_trade_size_sol} SOL")
-                config_table.add_row("Fee Buffer", f"{config.fee_buffer_sol} SOL")
-                
-                console.print(config_table)
-                
                 # Select mode
                 mode = select_mode()
+                
+
                 
                 if mode == "backtest":
                     # Run backtest with all available data
@@ -321,19 +295,14 @@ async def main():
                             sys.exit(0)
                 
                 elif mode == "auto-trade":
-                    # Confirm before starting auto-trade
-                    if Confirm.ask("\n🚀 [bold cyan]Start auto-trading?[/bold cyan]"):
-                        console.print("\n🔄 [bold green]Starting trading bot...[/bold green]")
-                        executor = Executor(strategy_name, token_id)
-                        await executor.run()
-                        
-                        # After auto-trade ends, ask if user wants to try another strategy
-                        if Confirm.ask("\n🔄 [bold cyan]Try another strategy?[/bold cyan]"):
-                            console.print("\n" + "="*80 + "\n")
-                            continue  # Go back to strategy selection, same token_id
-                        else:
-                            console.print("👋 [yellow]Exiting...[/yellow]")
-                            sys.exit(0)
+                    console.print("\n🔄 [bold green]Starting trading bot...[/bold green]")
+                    executor = Executor(strategy_name, token_id, prompt_for_configs=True)
+                    await executor.run()
+                    
+                    # After auto-trade ends, ask if user wants to try another strategy
+                    if Confirm.ask("\n🔄 [bold cyan]Try another strategy?[/bold cyan]"):
+                        console.print("\n" + "="*80 + "\n")
+                        continue  # Go back to strategy selection, same token_id
                     else:
                         console.print("👋 [yellow]Exiting...[/yellow]")
                         sys.exit(0)

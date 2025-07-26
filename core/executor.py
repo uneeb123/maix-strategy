@@ -10,14 +10,7 @@ from datetime import datetime
 from typing import Optional
 
 from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
-from rich.prompt import Prompt, Confirm
-from rich.text import Text
-from rich.layout import Layout
-from rich.live import Live
-from rich.align import Align
-from rich import box
+from rich.prompt import Prompt
 
 from prisma import Prisma
 from utils.debugger import Debugger
@@ -26,12 +19,7 @@ from lib.jupiter_client import JupiterClient
 from lib.helius_client import HeliusClient
 from core.strategy_factory import StrategyFactory
 from core.strategy_interface import Candle, StrategyConfig
-from core.backtest import run_backtest
 
-import os
-import importlib
-import json
-from pathlib import Path
 
 # Initialize Rich console
 console = Console()
@@ -42,20 +30,159 @@ console = Console()
 class Executor:
     """Generic trade executor that works with any strategy"""
     
-    def __init__(self, strategy_name: str, token_id: int):
+    @staticmethod
+    def prompt_for_trade_configs(strategy_name: str) -> dict:
+        """Prompt user for trade-specific configurations"""
+        config = StrategyFactory.get_strategy_config(strategy_name)
+        
+        console.print("\n[bold cyan]Trade Configuration:[/bold cyan]")
+        console.print("Configure your trading parameters (press Enter to use defaults):")
+        
+        trade_configs = {}
+        
+        # Balance percentage
+        while True:
+            try:
+                balance_input = Prompt.ask(
+                    f"\n[bold cyan]Balance percentage[/bold cyan] (default: {config.balance_percentage * 100:.1f}%)",
+                    default=str(config.balance_percentage * 100)
+                )
+                balance_pct = float(balance_input) / 100
+                if 0 < balance_pct <= 1:
+                    trade_configs['balance_percentage'] = balance_pct
+                    break
+                else:
+                    console.print("❌ [red]Balance must be between 0% and 100%[/red]")
+            except ValueError:
+                console.print("❌ [red]Invalid input. Please enter a valid number.[/red]")
+            except KeyboardInterrupt:
+                console.print("\n👋 [yellow]Exiting...[/yellow]")
+                sys.exit(0)
+        
+        # Slippage
+        while True:
+            try:
+                slippage_input = Prompt.ask(
+                    f"\n[bold cyan]Slippage tolerance[/bold cyan] (default: {config.default_slippage_bps / 100:.2f}%)",
+                    default=str(config.default_slippage_bps / 100)
+                )
+                slippage_pct = float(slippage_input)
+                if slippage_pct >= 0:
+                    trade_configs['default_slippage_bps'] = slippage_pct * 100
+                    break
+                else:
+                    console.print("❌ [red]Slippage must be 0% or higher[/red]")
+            except ValueError:
+                console.print("❌ [red]Invalid input. Please enter a valid number.[/red]")
+            except KeyboardInterrupt:
+                console.print("\n👋 [yellow]Exiting...[/yellow]")
+                sys.exit(0)
+        
+        # Min trade size
+        while True:
+            try:
+                min_trade_input = Prompt.ask(
+                    f"\n[bold cyan]Minimum trade size[/bold cyan] (default: {config.min_trade_size_sol} SOL)",
+                    default=str(config.min_trade_size_sol)
+                )
+                min_trade = float(min_trade_input)
+                if min_trade > 0:
+                    trade_configs['min_trade_size_sol'] = min_trade
+                    break
+                else:
+                    console.print("❌ [red]Minimum trade size must be greater than 0[/red]")
+            except ValueError:
+                console.print("❌ [red]Invalid input. Please enter a valid number.[/red]")
+            except KeyboardInterrupt:
+                console.print("\n👋 [yellow]Exiting...[/yellow]")
+                sys.exit(0)
+        
+        # Fee buffer
+        while True:
+            try:
+                fee_buffer_input = Prompt.ask(
+                    f"\n[bold cyan]Fee buffer[/bold cyan] (default: {config.fee_buffer_sol} SOL)",
+                    default=str(config.fee_buffer_sol)
+                )
+                fee_buffer = float(fee_buffer_input)
+                if fee_buffer >= 0:
+                    trade_configs['fee_buffer_sol'] = fee_buffer
+                    break
+                else:
+                    console.print("❌ [red]Fee buffer must be 0 or higher[/red]")
+            except ValueError:
+                console.print("❌ [red]Invalid input. Please enter a valid number.[/red]")
+            except KeyboardInterrupt:
+                console.print("\n👋 [yellow]Exiting...[/yellow]")
+                sys.exit(0)
+        
+        return trade_configs
+    
+    def display_final_config(self):
+        """Display the final configuration after trade configs are set"""
+        from rich.table import Table
+        
+        config_table = Table(
+            show_header=True,
+            header_style="bold cyan"
+        )
+        
+        config_table.add_column("Parameter", style="bold white", width=15)
+        config_table.add_column("Value", style="green", width=20)
+        
+        config_table.add_row("Token ID", str(self.config.token_id))
+        config_table.add_row("Strategy", f"[bold]{self.config.name.upper()}[/bold]")
+        config_table.add_row("Lookback", f"{self.config.lookback_periods} periods")
+        config_table.add_row("Balance", f"{self.config.balance_percentage * 100:.1f}%")
+        config_table.add_row("Slippage", f"{self.config.default_slippage_bps / 100:.2f}%")
+        config_table.add_row("Min Trade", f"{self.config.min_trade_size_sol} SOL")
+        config_table.add_row("Fee Buffer", f"{self.config.fee_buffer_sol} SOL")
+        
+        console.print("\n[bold cyan]Final Configuration:[/bold cyan]")
+        console.print(config_table)
+    
+    def __init__(self, strategy_name: str, token_id: int, trade_configs: dict = None, prompt_for_configs: bool = False):
         self.strategy = StrategyFactory.create_strategy(strategy_name)
+        strategy_config = self.strategy.get_config()
+        
+        # Prompt for trade configs if requested
+        if prompt_for_configs:
+            trade_configs = self.prompt_for_trade_configs(strategy_name)
+        
+        # Use custom trade configs if provided, otherwise use strategy defaults
+        if trade_configs:
+            balance_percentage = trade_configs.get('balance_percentage', strategy_config.balance_percentage)
+            default_slippage_bps = trade_configs.get('default_slippage_bps', strategy_config.default_slippage_bps)
+            min_trade_size_sol = trade_configs.get('min_trade_size_sol', strategy_config.min_trade_size_sol)
+            fee_buffer_sol = trade_configs.get('fee_buffer_sol', strategy_config.fee_buffer_sol)
+        else:
+            balance_percentage = strategy_config.balance_percentage
+            default_slippage_bps = strategy_config.default_slippage_bps
+            min_trade_size_sol = strategy_config.min_trade_size_sol
+            fee_buffer_sol = strategy_config.fee_buffer_sol
+        
         # Override the strategy's token_id with the user's choice
         self.config = StrategyConfig(
-            name=self.strategy.get_config().name,
+            name=strategy_config.name,
             token_id=token_id,
-            lookback_periods=self.strategy.get_config().lookback_periods,
-            balance_percentage=self.strategy.get_config().balance_percentage,
-            default_slippage_bps=self.strategy.get_config().default_slippage_bps,
-            min_trade_size_sol=self.strategy.get_config().min_trade_size_sol,
-            fee_buffer_sol=self.strategy.get_config().fee_buffer_sol,
-            rent_buffer_sol=self.strategy.get_config().rent_buffer_sol,
-            loop_delay_ms=self.strategy.get_config().loop_delay_ms
+            lookback_periods=strategy_config.lookback_periods,
+            balance_percentage=balance_percentage,
+            default_slippage_bps=default_slippage_bps,
+            min_trade_size_sol=min_trade_size_sol,
+            fee_buffer_sol=fee_buffer_sol,
+            rent_buffer_sol=strategy_config.rent_buffer_sol,
+            loop_delay_ms=strategy_config.loop_delay_ms
         )
+        
+        # Display final config if prompted for configs
+        if prompt_for_configs:
+            self.display_final_config()
+            
+            # Confirm before starting
+            from rich.prompt import Confirm
+            if not Confirm.ask("\n🚀 [bold cyan]Start auto-trading with these settings?[/bold cyan]"):
+                console.print("👋 [yellow]Exiting...[/yellow]")
+                sys.exit(0)
         self.telegram_chat_id = 'dummy_174546'  # Hardcoded value
         
         # Global state
