@@ -49,3 +49,23 @@ def test_plot_with_pivot_points(sample_candles, token_meta):
         indicators=indicators
     )
     assert result is not None
+
+def test_plot_with_ema(sample_candles, token_meta):
+    """Test plot with EMA indicator"""
+    strategy_name = "Test Strategy with EMA"
+    token_title = f"{token_meta.get('name')} ({token_meta.get('id')})"
+    
+    # Define indicators with parameters
+    indicators = {
+        "ema": {
+            "period": 100
+        }
+    }
+    
+    result = plot_trading_signals(
+        sample_candles, 
+        token_title, 
+        strategy_name,
+        indicators=indicators
+    )
+    assert result is not None

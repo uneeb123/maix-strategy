@@ -3,7 +3,7 @@ from plotly.subplots import make_subplots
 import pandas as pd
 from typing import List, Dict, Any, Optional
 from core.strategy_interface import Candle
-from core.indicators import calculate_pivot_points
+from core.indicators import calculate_pivot_points, calculate_ema
 from rich.console import Console
 
 console = Console()
@@ -124,6 +124,26 @@ def plot_trading_signals(
                                     size=10,
                                     color='orange',
                                     line=dict(width=1, color='darkorange')
+                                )
+                            ),
+                            row=1, col=1
+                        )
+                
+                elif indicator_name == "ema":
+                    period = params.get("period", 20)
+                    ema_values = calculate_ema(candles, period)
+                    
+                    if ema_values:
+                        ema_df = pd.DataFrame(ema_values, columns=['timestamp', 'ema'])
+                        fig.add_trace(
+                            go.Scatter(
+                                x=ema_df['timestamp'],
+                                y=ema_df['ema'],
+                                mode='lines',
+                                name=f'EMA ({period})',
+                                line=dict(
+                                    color='purple',
+                                    width=2
                                 )
                             ),
                             row=1, col=1
